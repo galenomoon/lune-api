@@ -13,13 +13,24 @@ export class ModalitiesService {
     });
   }
 
-  async findAll({ name }: { name: string }) {
+  async findAll({
+    name,
+    sortBy,
+    sortOrder,
+  }: {
+    name: string;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+  }) {
     return await this.prismaService.modality.findMany({
       where: {
         name: {
           contains: name,
           mode: 'insensitive',
         },
+      },
+      orderBy: {
+        [sortBy]: sortOrder,
       },
     });
   }

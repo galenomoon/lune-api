@@ -25,9 +25,15 @@ export class ModalitiesController {
   }
 
   @Get()
-  async findAll(@Query('name') name: string) {
+  async findAll(
+    @Query('name') name: string,
+    @Query('sortBy') sortBy: string,
+    @Query('sortOrder') sortOrder: 'asc' | 'desc',
+  ) {
     return await this.modalitiesService.findAll({
       name,
+      sortBy,
+      sortOrder,
     });
   }
 
