@@ -26,6 +26,12 @@ export class LeadController {
     return await this.leadService.create(createLeadDto);
   }
 
+  @Get('dashboard')
+  @HttpCode(200)
+  async getDashboard() {
+    return await this.leadService.getDashboard();
+  }
+
   @Get()
   @HttpCode(200)
   async findAll(
