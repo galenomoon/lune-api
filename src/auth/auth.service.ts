@@ -21,6 +21,14 @@ export class AuthService {
     };
   }
 
+  async me(userId: string) {
+    const user = await this.usersService.findOne(userId)
+    if (!user) {
+      throw new BadRequestException('Session expired');
+    }
+    return user
+  }
+
   async login(loginAuthDto: LoginAuthDto) {
     const user = await this.usersService.findByEmail(loginAuthDto.email);
     if (!user) {
