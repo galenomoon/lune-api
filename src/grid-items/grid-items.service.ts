@@ -74,7 +74,7 @@ export class GridItemsService {
       throw new Error('classLevel not found');
     }
 
-    const teacher = await this.prisma.classLevel.findFirst({
+    const teacher = await this.prisma.teacher.findFirst({
       where: { id: classProperties.teacherId },
     });
 
