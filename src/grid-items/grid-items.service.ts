@@ -107,9 +107,7 @@ export class GridItemsService {
 
   async findAll() {
     const gridItems = await this.prisma.gridItem.findMany({
-      orderBy: {
-        startTime: 'asc',
-      },
+      orderBy: { startTime: 'asc' },
       include: {
         class: {
           include: {
@@ -122,26 +120,44 @@ export class GridItemsService {
       },
     });
 
-    const response = gridItems.reduce((acc, curr) => {
-      if (!acc[curr.dayOfWeek]) {
-        acc[curr.dayOfWeek.toLowerCase()] = [];
-      }
-      acc[curr.dayOfWeek.toLowerCase()].push({
-        ...curr,
-        id: curr.id,
-        maxStudents: curr.class?.maxStudents,
-        enrolledStudents: curr.class?.enrollments.length,
-        modality: curr.class?.modality.name,
-        startTime: curr.startTime,
-        endTime: curr.endTime,
-        level: curr.class?.classLevel.name,
-        description: curr.class?.description,
-        teacherName: curr.class?.teacher?.firstName,
-      });
-      return acc;
-    }, {});
+    const scheduleList: Record<string, any>[] = [];
 
-    return response;
+    gridItems.forEach((item) => {
+      let existingBlock = scheduleList.find((block) => {
+        const firstItem = Object.values(block).find(
+          (v) => v?.startTime === item.startTime,
+        );
+        return firstItem !== undefined;
+      });
+
+      if (!existingBlock) {
+        existingBlock = {
+          sunday: {},
+          monday: {},
+          tuesday: {},
+          wednesday: {},
+          thursday: {},
+          friday: {},
+          saturday: {},
+        };
+        scheduleList.push(existingBlock);
+      }
+
+      existingBlock[item.dayOfWeek.toLowerCase()] = {
+        ...item,
+        id: item.id,
+        maxStudents: item.class?.maxStudents,
+        enrolledStudents: item.class?.enrollments.length,
+        modality: item.class?.modality.name,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        level: item.class?.classLevel.name,
+        description: item.class?.description,
+        teacherName: item.class?.teacher?.firstName,
+      };
+    });
+
+    return scheduleList;
   }
 
   async findOne(id: string) {
