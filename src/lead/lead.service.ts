@@ -23,7 +23,7 @@ export class LeadService {
     modality,
     preferencePeriod,
     sortBy = 'updatedAt',
-    sortOrder = 'asc',
+    sortOrder = 'desc',
   }: {
     name: string;
     phone: string;
