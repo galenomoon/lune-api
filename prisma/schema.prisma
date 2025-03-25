@@ -26,20 +26,6 @@ model User {
   @@map("users")
 }
 
-model Plan {
-  id          String       @id @default(cuid())
-  name        String
-  weeklyHours Int
-  description String?
-  recurrence  String
-  price       Float
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  enrollments Enrollment[]
-
-  @@map("plans")
-}
-
 // ============ Student ============
 
 model Student {
@@ -126,7 +112,21 @@ model EmergencyContact {
   @@map("emergency_contacts")
 }
 
-//  ============ CRM ============
+model Plan {
+  id          String       @id @default(cuid())
+  name        String
+  weeklyHours Int
+  description String?
+  recurrence  String
+  price       Float
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  enrollments Enrollment[]
+
+  @@map("plans")
+}
+
+//  ============ CRM ✅ ============
 
 model Lead {
   id                 String   @id @default(cuid())
@@ -149,7 +149,7 @@ model Lead {
   @@map("leads")
 }
 
-// ============ Teacher ============
+// ============ Teacher ✅ ============
 
 model Teacher {
   id        String   @id @default(cuid())
@@ -171,7 +171,7 @@ model Teacher {
 
 // ============ GRID CLASSES ============
 
-model GridClass {
+model GridItem {
   id        String   @id @default(cuid())
   dayOfWeek String
   startTime String
@@ -199,7 +199,7 @@ model Class {
   classLevelId String
   maxStudents  Int
   classLevel   ClassLevel   @relation(fields: [classLevelId], references: [id])
-  gridClasses  GridClass[]
+  gridClasses  GridItem[]
 
   @@map("classes")
 }
@@ -223,6 +223,8 @@ model ClassLevel {
 
   @@map("class_levels")
 }
+
+// SOON...
 
 // ===================== LOGS =====================
 
