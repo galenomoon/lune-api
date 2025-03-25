@@ -176,8 +176,8 @@ model GridItem {
   dayOfWeek String
   startTime String
   endTime   String
-  classId   String
-  class     Class    @relation(fields: [classId], references: [id])
+  classId   String?
+  class     Class?   @relation(fields: [classId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -194,12 +194,13 @@ model Class {
   modality     Modality     @relation(fields: [modalityId], references: [id])
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-  teacher      Teacher[]
+  teacher      Teacher?      @relation(fields: [teacherId], references: [id])
   enrollments  Enrollment[]
   classLevelId String
   maxStudents  Int
   classLevel   ClassLevel   @relation(fields: [classLevelId], references: [id])
   gridClasses  GridItem[]
+  teacherId    String?
 
   @@map("classes")
 }
