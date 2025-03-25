@@ -56,6 +56,7 @@ export class LeadService {
           : undefined,
       },
       orderBy: {
+        updatedAt: 'desc',
         [sortBy]: sortOrder,
       },
     });

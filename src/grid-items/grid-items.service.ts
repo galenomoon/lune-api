@@ -61,9 +61,26 @@ export class GridItemsService {
     const modality = await this.prisma.modality.findFirst({
       where: { id: classProperties.modalityId },
     });
+
+    if (!modality?.id) {
+      throw new Error('modality not found');
+    }
+
     const classLevel = await this.prisma.classLevel.findFirst({
       where: { id: classProperties.classLevelId },
     });
+
+    if (!classLevel?.id) {
+      throw new Error('classLevel not found');
+    }
+
+    const teacher = await this.prisma.classLevel.findFirst({
+      where: { id: classProperties.teacherId },
+    });
+
+    if (!teacher?.id) {
+      throw new Error('teacher not found');
+    }
 
     const period = getTimePeriod(startTime);
 
