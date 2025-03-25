@@ -22,8 +22,8 @@ export class LeadService {
     status,
     modality,
     preferencePeriod,
-    sortBy,
-    sortOrder,
+    sortBy = 'updatedAt',
+    sortOrder = 'desc',
   }: {
     name: string;
     phone: string;
@@ -56,7 +56,6 @@ export class LeadService {
           : undefined,
       },
       orderBy: {
-        updatedAt: 'asc',
         [sortBy]: sortOrder,
       },
     });
