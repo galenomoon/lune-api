@@ -181,7 +181,7 @@ model GridItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("grid_classes")
+  @@map("grid_items")
 }
 
 // ============ CLASS ============
