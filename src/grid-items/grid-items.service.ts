@@ -90,9 +90,27 @@ export class GridItemsService {
     });
   }
 
-  async findAll() {
+  async findAll({
+    ageRange,
+    teacherId,
+    modalityId,
+    classLevelId,
+  }: {
+    ageRange: string;
+    teacherId: string;
+    modalityId: string;
+    classLevelId: string;
+  }) {
     const gridItems = await this.prisma.gridItem.findMany({
       orderBy: { startTime: 'asc' },
+      where: {
+        class: {
+          teacherId: teacherId ? { equals: teacherId } : undefined,
+          description: ageRange ? { equals: ageRange } : undefined,
+          modalityId: modalityId ? { equals: modalityId } : undefined,
+          classLevelId: classLevelId ? { equals: classLevelId } : undefined,
+        },
+      },
       include: {
         class: {
           include: {

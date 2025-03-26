@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { GridItemsService } from './grid-items.service';
 import { CreateGridItemDto } from './dto/create-grid-item.dto';
 import { UpdateGridItemDto } from './dto/update-grid-item.dto';
@@ -15,8 +25,18 @@ export class GridItemsController {
   }
 
   @Get()
-  async findAll() {
-    return await this.gridItemsService.findAll();
+  async findAll(
+    @Query('ageRange') ageRange: string,
+    @Query('teacherId') teacherId: string,
+    @Query('modalityId') modalityId: string,
+    @Query('classLevelId') classLevelId: string,
+  ) {
+    return await this.gridItemsService.findAll({
+      ageRange,
+      teacherId,
+      modalityId,
+      classLevelId,
+    });
   }
 
   @Get(':id')
@@ -25,7 +45,10 @@ export class GridItemsController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateGridItemDto: UpdateGridItemDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateGridItemDto: UpdateGridItemDto,
+  ) {
     return await this.gridItemsService.update(id, updateGridItemDto);
   }
 
