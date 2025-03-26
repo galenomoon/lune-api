@@ -6,6 +6,7 @@ export class CreateGridItemDto {
 }
 
 class Class {
+  id?: string;
   name: string;
   description?: string;
   modalityId: string;

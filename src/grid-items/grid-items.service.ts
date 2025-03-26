@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { CreateGridItemDto } from './dto/create-grid-item.dto';
 import { UpdateGridItemDto } from './dto/update-grid-item.dto';
 import { PrismaService } from 'src/config/prisma.service';
+import { timeToMinutes } from 'src/utils/timeToMinutes';
+import { getTimePeriod } from 'src/utils/getTimePeriod';
 
 @Injectable()
 export class GridItemsService {
@@ -14,23 +16,6 @@ export class GridItemsService {
       startTime,
       endTime,
     } = createGridItemDto;
-
-    const timeToMinutes = (time: string): number => {
-      const [hours, minutes] = time.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
-
-    function getTimePeriod(startTime: string): string {
-      const [hours] = startTime.split(':').map(Number);
-
-      if (hours >= 5 && hours < 12) {
-        return 'Manhã';
-      } else if (hours >= 12 && hours < 18) {
-        return 'Tarde';
-      } else {
-        return 'Noite';
-      }
-    }
 
     const startTimeMinutes = timeToMinutes(startTime);
     const endTimeMinutes = timeToMinutes(endTime);
@@ -78,7 +63,7 @@ export class GridItemsService {
       where: { id: classProperties.teacherId },
     });
 
-    if (!teacher?.id) {
+    if (!teacher?.id && classProperties.teacherId) {
       throw new Error('teacher not found');
     }
 
@@ -165,12 +150,84 @@ export class GridItemsService {
   }
 
   async update(id: string, updateGridItemDto: UpdateGridItemDto) {
+    const {
+      class: classProperties,
+      dayOfWeek,
+      startTime,
+      endTime,
+    } = updateGridItemDto;
+
+    const startTimeMinutes = timeToMinutes(startTime as string);
+    const endTimeMinutes = timeToMinutes(endTime as string);
+
+    if (startTimeMinutes >= endTimeMinutes) {
+      throw new Error(
+        "Horário inválido: 'startTime' deve ser menor que 'endTime'.",
+      );
+    }
+
+    const existingGridItems = await this.prisma.gridItem.findMany({
+      where: {
+        dayOfWeek,
+        id: { not: id },
+      },
+    });
+
+    const hasConflict = existingGridItems.some((item) => {
+      const itemStart = timeToMinutes(item.startTime);
+      const itemEnd = timeToMinutes(item.endTime);
+
+      return itemStart < endTimeMinutes && itemEnd > startTimeMinutes;
+    });
+
+    if (hasConflict) {
+      throw new Error('Conflito de horário: já existe uma aula neste horário.');
+    }
+
+    const modality = await this.prisma.modality.findFirst({
+      where: { id: classProperties?.modalityId },
+    });
+
+    if (!modality?.id) {
+      throw new Error('modality not found');
+    }
+
+    const classLevel = await this.prisma.classLevel.findFirst({
+      where: { id: classProperties?.classLevelId },
+    });
+
+    if (!classLevel?.id) {
+      throw new Error('classLevel not found');
+    }
+
+    const teacher = await this.prisma.teacher.findFirst({
+      where: { id: classProperties?.teacherId },
+    });
+
+    if (!teacher?.id && classProperties?.teacherId) {
+      throw new Error('teacher not found');
+    }
+
+    const period = getTimePeriod(startTime as string);
+
+    await this.prisma.class.update({
+      where: { id: classProperties?.id },
+      data: {
+        name: `${modality?.name} ${classProperties?.description} - ${classLevel?.name}/${period}`,
+        description: classProperties?.description || '',
+        maxStudents: classProperties?.maxStudents || 1,
+        modalityId: classProperties?.modalityId,
+        classLevelId: classProperties?.classLevelId,
+        teacherId: classProperties?.teacherId,
+      },
+    });
+
     return await this.prisma.gridItem.update({
       where: { id },
       data: {
-        dayOfWeek: updateGridItemDto.dayOfWeek,
-        startTime: updateGridItemDto.startTime,
-        endTime: updateGridItemDto.endTime,
+        dayOfWeek,
+        startTime,
+        endTime,
       },
     });
   }
