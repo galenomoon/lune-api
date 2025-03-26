@@ -233,6 +233,38 @@ export class GridItemsService {
   }
 
   async remove(id: string) {
-    return await this.prisma.gridItem.delete({ where: { id } });
+    const gridItem = await this.prisma.gridItem.findUnique({ where: { id } });
+
+    if (!gridItem) {
+      throw new Error(`GridItem com ID ${id} não encontrado.`);
+    }
+
+    const classEnrollments = await this.prisma.enrollment.findMany({
+      where: {
+        classId: gridItem.classId,
+      },
+    });
+
+    if (classEnrollments.length > 0) {
+      throw new Error(
+        'Não é possível excluir este horário, pois existem matrículas associadas à classe.',
+      );
+    }
+
+    const deletedGridItem = await this.prisma.gridItem.delete({
+      where: { id },
+    });
+
+    const classItems = await this.prisma.gridItem.findMany({
+      where: { classId: gridItem.classId },
+    });
+
+    if (classItems.length === 0) {
+      await this.prisma.class.delete({
+        where: { id: gridItem.classId as string },
+      });
+    }
+
+    return deletedGridItem;
   }
 }
