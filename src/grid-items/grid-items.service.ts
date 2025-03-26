@@ -165,7 +165,67 @@ export class GridItemsService {
       };
     });
 
-    return scheduleList;
+    const dashboard = await this.getGridDashboard();
+
+    return { dashboard, data: scheduleList };
+  }
+
+  async getGridDashboard() {
+    const gridItems = await this.prisma.gridItem.findMany({
+      include: {
+        class: {
+          include: {
+            teacher: true,
+            enrollments: true,
+          },
+        },
+      },
+    });
+
+    let totalWeeklyCost = 0;
+    let totalStudents = 0;
+
+    for (const item of gridItems) {
+      const teacher = item.class?.teacher;
+      const enrollments = item.class?.enrollments.length ?? 0;
+
+      const [startHour, startMin] = item.startTime.split(':').map(Number);
+      const [endHour, endMin] = item.endTime.split(':').map(Number);
+      const classDuration =
+        (endHour * 60 + endMin - (startHour * 60 + startMin)) / 60;
+
+      if (teacher && enrollments > 0) {
+        totalWeeklyCost += classDuration * (teacher.priceHour ?? 0);
+      }
+
+      totalStudents += enrollments;
+    }
+
+    const MONTHLY_FEE = 110; // TODO: Pegar os valores de cada mensalidade de cada aluno em seu respectivo plano
+
+    const totalMonthlyCost = totalWeeklyCost * 4;
+    const weeklyRevenue = (totalStudents * MONTHLY_FEE) / 4;
+    const monthlyRevenue = totalStudents * MONTHLY_FEE;
+    const weeklyProfit = weeklyRevenue - totalWeeklyCost;
+    const monthlyProfit = monthlyRevenue - totalMonthlyCost;
+
+    return {
+      revenues: {
+        weekly: weeklyRevenue,
+        monthly: monthlyRevenue,
+      },
+      costs: {
+        weekly: totalWeeklyCost,
+        monthly: totalMonthlyCost,
+      },
+      profits: {
+        weekly: weeklyProfit,
+        monthly: monthlyProfit,
+      },
+      enrollments: {
+        totalStudents,
+      },
+    };
   }
 
   async findOne(id: string) {
