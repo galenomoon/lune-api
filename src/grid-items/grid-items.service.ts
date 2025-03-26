@@ -91,11 +91,13 @@ export class GridItemsService {
   }
 
   async findAll({
+    name,
     ageRange,
     teacherId,
     modalityId,
     classLevelId,
   }: {
+    name: string;
     ageRange: string;
     teacherId: string;
     modalityId: string;
@@ -105,6 +107,9 @@ export class GridItemsService {
       orderBy: { startTime: 'asc' },
       where: {
         class: {
+          modality: {
+            name: name ? { contains: name, mode: 'insensitive' } : undefined,
+          },
           teacherId: teacherId ? { equals: teacherId } : undefined,
           description: ageRange ? { equals: ageRange } : undefined,
           modalityId: modalityId ? { equals: modalityId } : undefined,

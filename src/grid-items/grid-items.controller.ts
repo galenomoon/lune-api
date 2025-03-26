@@ -26,12 +26,14 @@ export class GridItemsController {
 
   @Get()
   async findAll(
+    @Query('name') name: string,
     @Query('ageRange') ageRange: string,
     @Query('teacherId') teacherId: string,
     @Query('modalityId') modalityId: string,
     @Query('classLevelId') classLevelId: string,
   ) {
     return await this.gridItemsService.findAll({
+      name,
       ageRange,
       teacherId,
       modalityId,
