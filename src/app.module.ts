@@ -8,9 +8,10 @@ import { ModalitiesModule } from './modalities/modalities.module';
 import { TeacherModule } from './teacher/teacher.module';
 import { GridItemsModule } from './grid-items/grid-items.module';
 import { ClassLevelsModule } from './class-levels/class-levels.module';
+import { ClassesModule } from './classes/classes.module';
 
 @Module({
-  imports: [LeadModule, UserModule, AuthModule, ModalitiesModule, TeacherModule, GridItemsModule, ClassLevelsModule],
+  imports: [LeadModule, UserModule, AuthModule, ModalitiesModule, TeacherModule, GridItemsModule, ClassLevelsModule, ClassesModule],
   controllers: [AppController],
   providers: [AppService],
 })

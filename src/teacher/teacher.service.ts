@@ -5,10 +5,10 @@ import { PrismaService } from 'src/config/prisma.service';
 
 @Injectable()
 export class TeacherService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(createTeacherDto: CreateTeacherDto) {
-    return await this.prismaService.teacher.create({
+    return await this.prisma.teacher.create({
       data: createTeacherDto,
     });
   }
@@ -22,7 +22,7 @@ export class TeacherService {
     sortBy: string;
     sortOrder: 'asc' | 'desc';
   }) {
-    return await this.prismaService.teacher.findMany({
+    return await this.prisma.teacher.findMany({
       where: {
         OR: name
           ? [
@@ -38,19 +38,19 @@ export class TeacherService {
   }
 
   async findOne(id: string) {
-    return await this.prismaService.teacher.findUnique({
+    return await this.prisma.teacher.findUnique({
       where: { id },
     });
   }
 
   async update(id: string, updateTeacherDto: UpdateTeacherDto) {
-    return await this.prismaService.teacher.update({
+    return await this.prisma.teacher.update({
       where: { id },
       data: updateTeacherDto,
     });
   }
 
   async remove(id: string) {
-    return await this.prismaService.teacher.delete({ where: { id } });
+    return await this.prisma.teacher.delete({ where: { id } });
   }
 }

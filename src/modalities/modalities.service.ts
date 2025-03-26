@@ -5,10 +5,10 @@ import { PrismaService } from 'src/config/prisma.service';
 
 @Injectable()
 export class ModalitiesService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(createModalityDto: CreateModalityDto) {
-    return await this.prismaService.modality.create({
+    return await this.prisma.modality.create({
       data: createModalityDto,
     });
   }
@@ -22,7 +22,7 @@ export class ModalitiesService {
     sortBy: string;
     sortOrder: 'asc' | 'desc';
   }) {
-    return await this.prismaService.modality.findMany({
+    return await this.prisma.modality.findMany({
       where: {
         name: {
           contains: name,
@@ -36,17 +36,17 @@ export class ModalitiesService {
   }
 
   async findOne(id: string) {
-    return await this.prismaService.modality.findUnique({ where: { id } });
+    return await this.prisma.modality.findUnique({ where: { id } });
   }
 
   async update(id: string, updateModalityDto: UpdateModalityDto) {
-    return await this.prismaService.modality.update({
+    return await this.prisma.modality.update({
       where: { id },
       data: updateModalityDto,
     });
   }
 
   async remove(id: string) {
-    return await this.prismaService.modality.delete({ where: { id } });
+    return await this.prisma.modality.delete({ where: { id } });
   }
 }

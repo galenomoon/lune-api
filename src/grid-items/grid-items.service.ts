@@ -67,11 +67,11 @@ export class GridItemsService {
       throw new Error('teacher not found');
     }
 
-    const period = getTimePeriod(startTime);
+    // const period = getTimePeriod(startTime);
 
     const { id: classId } = await this.prisma.class.create({
       data: {
-        name: `${modality?.name} ${classProperties.description} - ${classLevel?.name}/${period}`,
+        name: `${modality?.name} ${classProperties.description} - ${classLevel?.name}`,
         description: classProperties.description || '',
         maxStudents: classProperties.maxStudents || 1,
         modalityId: classProperties.modalityId,
@@ -291,12 +291,12 @@ export class GridItemsService {
       throw new Error('teacher not found');
     }
 
-    const period = getTimePeriod(startTime as string);
+    // const period = getTimePeriod(startTime as string);
 
     await this.prisma.class.update({
       where: { id: classProperties?.id },
       data: {
-        name: `${modality?.name} ${classProperties?.description} - ${classLevel?.name}/${period}`,
+        name: `${modality?.name} ${classProperties?.description} - ${classLevel?.name}`,
         description: classProperties?.description || '',
         maxStudents: classProperties?.maxStudents || 1,
         modalityId: classProperties?.modalityId,

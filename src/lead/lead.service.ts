@@ -5,10 +5,10 @@ import { UpdateLeadDto } from './dto/update-lead.dto';
 
 @Injectable()
 export class LeadService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(createLeadDto: CreateLeadDto) {
-    return await this.prismaService.lead.create({
+    return await this.prisma.lead.create({
       data: createLeadDto,
     });
   }
@@ -37,7 +37,7 @@ export class LeadService {
     sortOrder: 'asc' | 'desc';
   }) {
     const dashboard = await this.getDashboard();
-    const value = await this.prismaService.lead.findMany({
+    const value = await this.prisma.lead.findMany({
       where: {
         OR: name
           ? [
@@ -63,43 +63,43 @@ export class LeadService {
   }
 
   async findOne(id: string) {
-    return await this.prismaService.lead.findUnique({ where: { id } });
+    return await this.prisma.lead.findUnique({ where: { id } });
   }
 
   async update(id: string, updateLeadDto: UpdateLeadDto) {
-    return await this.prismaService.lead.update({
+    return await this.prisma.lead.update({
       where: { id },
       data: updateLeadDto,
     });
   }
 
   async remove(id: string) {
-    return await this.prismaService.lead.delete({ where: { id } });
+    return await this.prisma.lead.delete({ where: { id } });
   }
 
   async getDashboard() {
-    const totalLeads = await this.prismaService.lead.count();
+    const totalLeads = await this.prisma.lead.count();
 
-    const leadsByStatus = await this.prismaService.lead.groupBy({
+    const leadsByStatus = await this.prisma.lead.groupBy({
       by: ['status'],
       _count: { status: true },
     });
 
-    const leadsByModality = await this.prismaService.lead.groupBy({
+    const leadsByModality = await this.prisma.lead.groupBy({
       by: ['modalityOfInterest'],
       _count: { modalityOfInterest: true },
     });
 
-    const leadsByFindUsBy = await this.prismaService.lead.groupBy({
+    const leadsByFindUsBy = await this.prisma.lead.groupBy({
       by: ['findUsBy'],
       _count: { findUsBy: true },
     });
 
-    const averageScore = await this.prismaService.lead.aggregate({
+    const averageScore = await this.prisma.lead.aggregate({
       _avg: { score: true },
     });
 
-    const newLeadsLast7Days = await this.prismaService.lead.count({
+    const newLeadsLast7Days = await this.prisma.lead.count({
       where: {
         createdAt: {
           gte: new Date(new Date().setDate(new Date().getDate() - 7)),
