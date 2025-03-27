@@ -13,8 +13,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============ User ============
-
+// ============ User ✅ ============
+//OK
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -53,7 +53,7 @@ model Enrollment {
   id         String   @id @default(cuid())
   startDate  DateTime
   endDate    DateTime
-  status     String
+  status     String // 'active', 'canceled', 'pending'
   studentId  String
   student    Student  @relation(fields: [studentId], references: [id])
   planId     String
@@ -113,21 +113,22 @@ model EmergencyContact {
 }
 
 model Plan {
-  id          String       @id @default(cuid())
-  name        String
-  weeklyHours Int
-  description String?
-  recurrence  String
-  price       Float
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  enrollments Enrollment[]
+  id            String       @id @default(cuid())
+  name          String
+  weeklyClasses Int
+  description   String?
+  durationInDays Int
+  price         Float
+  status        Boolean      @default(true)  // true = ativo, false = inativo
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  enrollments   Enrollment[]
 
   @@map("plans")
 }
 
-//  ============ CRM ✅ ============
-
+//  ============ CRM ============
+//OK
 model Lead {
   id                 String   @id @default(cuid())
   firstName          String
@@ -149,8 +150,8 @@ model Lead {
   @@map("leads")
 }
 
-// ============ Teacher ✅ ============
-
+// ============ Teacher ============
+//OK
 model Teacher {
   id        String   @id @default(cuid())
   firstName String
@@ -170,7 +171,7 @@ model Teacher {
 }
 
 // ============ GRID CLASSES ============
-
+//OK
 model GridItem {
   id        String   @id @default(cuid())
   dayOfWeek String
@@ -185,7 +186,7 @@ model GridItem {
 }
 
 // ============ CLASS ============
-
+//OK
 model Class {
   id           String       @id @default(cuid())
   name         String
@@ -194,7 +195,7 @@ model Class {
   modality     Modality     @relation(fields: [modalityId], references: [id])
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-  teacher      Teacher?      @relation(fields: [teacherId], references: [id])
+  teacher      Teacher?     @relation(fields: [teacherId], references: [id])
   enrollments  Enrollment[]
   classLevelId String
   maxStudents  Int
@@ -205,6 +206,7 @@ model Class {
   @@map("classes")
 }
 
+//OK
 model Modality {
   id        String   @id @default(cuid())
   name      String
@@ -215,6 +217,7 @@ model Modality {
   @@map("modalities")
 }
 
+//OK
 model ClassLevel {
   id        String   @id @default(cuid())
   name      String
