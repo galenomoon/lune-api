@@ -10,9 +10,10 @@ import { GridItemsModule } from './grid-items/grid-items.module';
 import { ClassLevelsModule } from './class-levels/class-levels.module';
 import { ClassesModule } from './classes/classes.module';
 import { PlansModule } from './plans/plans.module';
+import { EnrollmentModule } from './enrollment/enrollment.module';
 
 @Module({
-  imports: [LeadModule, UserModule, AuthModule, ModalitiesModule, TeacherModule, GridItemsModule, ClassLevelsModule, ClassesModule, PlansModule],
+  imports: [LeadModule, UserModule, AuthModule, ModalitiesModule, TeacherModule, GridItemsModule, ClassLevelsModule, ClassesModule, PlansModule, EnrollmentModule],
   controllers: [AppController],
   providers: [AppService],
 })
