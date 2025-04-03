@@ -37,14 +37,13 @@ export class LeadService {
     sortOrder: 'asc' | 'desc';
   }) {
     const dashboard = await this.getDashboard();
-    const normalizePhone = (phone: string) => phone.replace(/\D/g, '');
     const value = await this.prisma.lead.findMany({
       where: {
         OR: name
           ? [
               { firstName: { contains: name, mode: 'insensitive' } },
               { lastName: { contains: name, mode: 'insensitive' } },
-              { phone: { contains: normalizePhone(name) } }
+              { phone: { contains: name } },
             ]
           : undefined,
         phone: phone ? { contains: phone } : undefined,
