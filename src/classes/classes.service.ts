@@ -38,6 +38,7 @@ export class ClassesService {
         classLevel: true,
         teacher: true,
         gridClasses: true,
+        modality: true
       },
       orderBy: {
         updatedAt: 'desc',

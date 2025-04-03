@@ -1,47 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { CreateGridItemDto } from './dto/create-grid-item.dto';
-import { UpdateGridItemDto } from './dto/update-grid-item.dto';
 import { PrismaService } from 'src/config/prisma.service';
 import { timeToMinutes } from 'src/utils/timeToMinutes';
-import { getTimePeriod } from 'src/utils/getTimePeriod';
 
 @Injectable()
 export class GridItemsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createGridItemDto: CreateGridItemDto) {
-    const {
-      class: classProperties,
-      dayOfWeek,
-      startTime,
-      endTime,
-    } = createGridItemDto;
-
-    const startTimeMinutes = timeToMinutes(startTime);
-    const endTimeMinutes = timeToMinutes(endTime);
-
-    if (startTimeMinutes >= endTimeMinutes) {
-      throw new Error(
-        "Horário inválido: 'startTime' deve ser menor que 'endTime'.",
-      );
-    }
-
-    const existingGridItems = await this.prisma.gridItem.findMany({
-      where: {
-        dayOfWeek,
-      },
-    });
-
-    const hasConflict = existingGridItems.some((item) => {
-      const itemStart = timeToMinutes(item.startTime);
-      const itemEnd = timeToMinutes(item.endTime);
-
-      return itemStart < endTimeMinutes && itemEnd > startTimeMinutes;
-    });
-
-    if (hasConflict) {
-      throw new Error('Conflito de horário: já existe uma aula neste horário.');
-    }
+    const { class: classProperties, gridItems } = createGridItemDto;
 
     const modality = await this.prisma.modality.findFirst({
       where: { id: classProperties.modalityId },
@@ -67,8 +34,6 @@ export class GridItemsService {
       throw new Error('teacher not found');
     }
 
-    // const period = getTimePeriod(startTime);
-
     const { id: classId } = await this.prisma.class.create({
       data: {
         name: `${modality?.name} ${classProperties.description} - ${classLevel?.name}`,
@@ -80,14 +45,52 @@ export class GridItemsService {
       },
     });
 
-    return await this.prisma.gridItem.create({
-      data: {
-        classId,
-        dayOfWeek,
-        startTime,
-        endTime,
-      },
-    });
+    let response = [] as object[];
+
+
+    for (let i = 0; i < gridItems.length; ++i) {
+      const { startTime, endTime, dayOfWeek } = gridItems[i];
+
+      const startTimeMinutes = timeToMinutes(startTime);
+      const endTimeMinutes = timeToMinutes(endTime);
+      if (startTimeMinutes >= endTimeMinutes) {
+        throw new Error(
+          "Horário inválido: 'startTime' deve ser menor que 'endTime'.",
+        );
+      }
+
+      const existingGridItems = await this.prisma.gridItem.findMany({
+        where: {
+          dayOfWeek,
+        },
+      });
+
+      const hasConflict = existingGridItems.some((item) => {
+        const itemStart = timeToMinutes(item.startTime);
+        const itemEnd = timeToMinutes(item.endTime);
+
+        return itemStart < endTimeMinutes && itemEnd > startTimeMinutes;
+      });
+
+      if (hasConflict) {
+        throw new Error(
+          'Conflito de horário: já existe uma aula neste horário.',
+        );
+      }
+
+      const createdGridItem = await this.prisma.gridItem.create({
+        data: {
+          classId,
+          dayOfWeek,
+          startTime,
+          endTime,
+        },
+      });
+
+      response.push(createdGridItem);
+    }
+
+    return response;
   }
 
   async findAll({
@@ -232,87 +235,77 @@ export class GridItemsService {
     return await this.prisma.gridItem.findUnique({ where: { id } });
   }
 
-  async update(id: string, updateGridItemDto: UpdateGridItemDto) {
-    const {
-      class: classProperties,
-      dayOfWeek,
-      startTime,
-      endTime,
-    } = updateGridItemDto;
+  async update(classId: string, updateGridItemsDto: CreateGridItemDto) {
+    const { class: classProperties, gridItems } = updateGridItemsDto;
 
-    const startTimeMinutes = timeToMinutes(startTime as string);
-    const endTimeMinutes = timeToMinutes(endTime as string);
-
-    if (startTimeMinutes >= endTimeMinutes) {
-      throw new Error(
-        "Horário inválido: 'startTime' deve ser menor que 'endTime'.",
-      );
-    }
-
-    const existingGridItems = await this.prisma.gridItem.findMany({
-      where: {
-        dayOfWeek,
-        id: { not: id },
-      },
+    const existingClass = await this.prisma.class.findFirst({
+      where: { id: classId },
     });
 
-    const hasConflict = existingGridItems.some((item) => {
-      const itemStart = timeToMinutes(item.startTime);
-      const itemEnd = timeToMinutes(item.endTime);
-
-      return itemStart < endTimeMinutes && itemEnd > startTimeMinutes;
-    });
-
-    if (hasConflict) {
-      throw new Error('Conflito de horário: já existe uma aula neste horário.');
+    if (!existingClass) {
+      throw new Error('Class not found');
     }
-
-    const modality = await this.prisma.modality.findFirst({
-      where: { id: classProperties?.modalityId },
-    });
-
-    if (!modality?.id) {
-      throw new Error('modality not found');
-    }
-
-    const classLevel = await this.prisma.classLevel.findFirst({
-      where: { id: classProperties?.classLevelId },
-    });
-
-    if (!classLevel?.id) {
-      throw new Error('classLevel not found');
-    }
-
-    const teacher = await this.prisma.teacher.findFirst({
-      where: { id: classProperties?.teacherId },
-    });
-
-    if (!teacher?.id && classProperties?.teacherId) {
-      throw new Error('teacher not found');
-    }
-
-    // const period = getTimePeriod(startTime as string);
 
     await this.prisma.class.update({
-      where: { id: classProperties?.id },
+      where: { id: classId },
       data: {
-        name: `${modality?.name} ${classProperties?.description} - ${classLevel?.name}`,
-        description: classProperties?.description || '',
-        maxStudents: classProperties?.maxStudents || 1,
-        modalityId: classProperties?.modalityId,
-        classLevelId: classProperties?.classLevelId,
-        teacherId: classProperties?.teacherId,
+        name: `${classProperties.description} - ${existingClass.name}`,
+        description: classProperties.description || '',
+        maxStudents: classProperties.maxStudents || 1,
+        modalityId: classProperties.modalityId,
+        classLevelId: classProperties.classLevelId,
+        teacherId: classProperties.teacherId,
       },
     });
 
-    return await this.prisma.gridItem.update({
-      where: { id },
-      data: {
-        dayOfWeek,
-        startTime,
-        endTime,
-      },
-    });
+    let response = [] as object[];
+
+    await this.prisma.gridItem.deleteMany({ where: { classId } });
+
+    for (let i = 0; i < gridItems.length; i++) {
+      const { startTime, endTime, dayOfWeek } = gridItems[i];
+
+      const startTimeMinutes = timeToMinutes(startTime);
+      const endTimeMinutes = timeToMinutes(endTime);
+      if (startTimeMinutes >= endTimeMinutes) {
+        throw new Error(
+          "Horário inválido: 'startTime' deve ser menor que 'endTime'.",
+        );
+      }
+
+      const existingGridItems = await this.prisma.gridItem.findMany({
+        where: {
+          dayOfWeek,
+          classId: { not: classId },
+        },
+      });
+
+      const hasConflict = existingGridItems.some((item) => {
+        const itemStart = timeToMinutes(item.startTime);
+        const itemEnd = timeToMinutes(item.endTime);
+
+        return itemStart < endTimeMinutes && itemEnd > startTimeMinutes;
+      });
+
+      if (hasConflict) {
+        throw new Error(
+          'Conflito de horário: já existe uma aula neste horário.',
+        );
+      }
+
+      const createdGridItem = await this.prisma.gridItem.create({
+        data: {
+          classId,
+          dayOfWeek,
+          startTime,
+          endTime,
+        },
+      });
+
+      response.push(createdGridItem);
+    }
+
+    return response;
   }
 
   async remove(id: string) {
@@ -338,15 +331,6 @@ export class GridItemsService {
       where: { id },
     });
 
-    const classItems = await this.prisma.gridItem.findMany({
-      where: { classId: gridItem.classId },
-    });
-
-    if (classItems.length === 0) {
-      await this.prisma.class.delete({
-        where: { id: gridItem.classId as string },
-      });
-    }
 
     return deletedGridItem;
   }

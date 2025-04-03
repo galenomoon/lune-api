@@ -11,9 +11,26 @@ import { ClassLevelsModule } from './class-levels/class-levels.module';
 import { ClassesModule } from './classes/classes.module';
 import { PlansModule } from './plans/plans.module';
 import { EnrollmentModule } from './enrollment/enrollment.module';
+import { StudentsModule } from './students/students.module';
+import { PaymentModule } from './payment/payment.module';
+import { ContractModule } from './contract/contracts.module';
 
 @Module({
-  imports: [LeadModule, UserModule, AuthModule, ModalitiesModule, TeacherModule, GridItemsModule, ClassLevelsModule, ClassesModule, PlansModule, EnrollmentModule],
+  imports: [
+    LeadModule,
+    UserModule,
+    AuthModule,
+    ModalitiesModule,
+    TeacherModule,
+    GridItemsModule,
+    ClassLevelsModule,
+    ClassesModule,
+    PlansModule,
+    EnrollmentModule,
+    StudentsModule,
+    PaymentModule,
+    ContractModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

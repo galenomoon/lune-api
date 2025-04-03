@@ -1,191 +1,219 @@
 import { Injectable } from '@nestjs/common';
-import { CreateEnrollmentDto, StudentDto } from './dto/create-enrollment.dto';
+import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { UpdateEnrollmentDto } from './dto/update-enrollment.dto';
 import { PrismaService } from 'src/config/prisma.service';
+import { CreateStudentDto } from 'src/students/dto/create-student.dto';
+import { CreatePaymentDto } from 'src/payment/dto/create-payment.dto';
+import { planDetailsIndexedByDurationInDays } from 'src/constants';
+import { createPayments } from 'src/utils/createPayments';
+import { getDateRangeByPlanDurationInDays } from 'src/utils/getDateRangeByPlanDurationInDays';
 
 @Injectable()
 export class EnrollmentService {
   constructor(private prisma: PrismaService) {}
 
   async create(createEnrollmentDto: CreateEnrollmentDto) {
-    // ========== HANDLE ERRORS ==========
+    const { student, emergencyContact, address, enrollment } =
+      createEnrollmentDto;
 
-    const currentClass = await this.prisma.class.findFirst({
-      where: { id: createEnrollmentDto.classId },
+    return this.prisma.$transaction(async (prisma) => {
+      // ========== HANDLE ERRORS ==========
+      const classData = await prisma.class.findFirst({
+        where: { id: enrollment.classId },
+      });
+      if (!classData) throw new Error('Class not found');
+
+      const planData = await prisma.plan.findFirst({
+        where: { id: enrollment.planId },
+      });
+      if (!planData) throw new Error('Plan not found');
+
+      const { durationInDays } = planData;
+
+      // ========== CREATE STUDENT ==========
+      const createdStudent = await prisma.student.create({
+        data: student as CreateStudentDto,
+      });
+      const studentId = createdStudent.id;
+
+      // ========== CREATE EMERGENCY CONTACT ==========
+      if (emergencyContact?.name) {
+        await prisma.emergencyContact.create({
+          data: { ...emergencyContact, studentId },
+        });
+      }
+
+      // ========== CREATE ADDRESS ==========
+      await prisma.address.create({ data: { ...address, studentId } });
+
+      // ========== CREATE ENROLLMENT ==========
+
+      const { startDate, endDate } = getDateRangeByPlanDurationInDays({
+        startDate: enrollment.startDate,
+        durationInDays,
+      });
+
+      const createdEnrollment = await prisma.enrollment.create({
+        data: {
+          student: { connect: { id: studentId } },
+          plan: { connect: { id: planData.id } },
+          class: { connect: { id: classData.id } },
+          startDate,
+          endDate,
+          paymentDay: +enrollment.paymentDay,
+          status: 'active',
+          signature: enrollment.signature,
+        },
+      });
+
+      // ========== CREATE PAYMENTS ==========
+      const payments = createPayments({
+        enrollment: createdEnrollment,
+        plan: planData,
+      });
+
+      await prisma.payment.createMany({ data: payments });
+
+      return createdEnrollment;
     });
-    if (!currentClass?.id) {
-      throw new Error('Class not found');
-    }
+  }
 
-    const currentPlan = await this.prisma.plan.findFirst({
-      where: { id: createEnrollmentDto.planId },
-    });
-    if (!currentPlan?.id) {
-      throw new Error('Plan not found');
-    }
-
-    // ========== CREATE STUDENT ==========
-
-    const { student } = createEnrollmentDto;
-    const {
-      firstName,
-      lastName,
-      birthDate,
-      cpf,
-      rg,
-      phone,
-      instagram,
-      email,
-      obs,
-      password,
-    } = student as StudentDto;
-
-    const currentStudent = await this.prisma.student.create({
+  async update(id: string, updateEnrollmentDto: UpdateEnrollmentDto) {
+    return await this.prisma.enrollment.update({
+      where: { id },
       data: {
-        firstName,
-        lastName,
-        birthDate,
-        cpf,
-        rg,
-        phone,
-        instagram,
-        email,
-        obs,
-        password,
-      },
-    });
-
-    if (!currentStudent?.id) {
-      throw new Error('Student not found');
-    }
-
-    return await this.prisma.enrollment.create({
-      data: {
-        startDate: createEnrollmentDto.startDate,
-        endDate: createEnrollmentDto.endDate,
-        status: createEnrollmentDto.status,
-        studentId: currentStudent.id,
-        planId: createEnrollmentDto.planId,
-        paymentDay: createEnrollmentDto.paymentDay,
-        classId: createEnrollmentDto.classId,
+        classId: updateEnrollmentDto?.classId,
       },
     });
   }
 
-  async findAll({
-    name,
-    status,
-    planId,
-    paymentDay,
-  }: {
-    name: string;
-    status: string;
-    planId: string;
-    paymentDay: number;
-  }) {
-    return await this.prisma.enrollment.findMany({
-      orderBy: {
-        updatedAt: 'desc',
-      },
-      include: {
-        class: true,
-        plan: true,
-        student: true,
-      },
-      where: {
-        student: {
-          OR: name
-            ? [
-                { firstName: { contains: name, mode: 'insensitive' } },
-                { lastName: { contains: name, mode: 'insensitive' } },
-              ]
-            : undefined,
+  async renew(enrollmentId: string, planId: string) {
+    return this.prisma.$transaction(async (prisma) => {
+      // ========== VERIFICAR MATRÍCULA ATUAL ==========
+      const currentEnrollment = await prisma.enrollment.findFirst({
+        where: { id: enrollmentId, status: 'active' },
+        include: { payments: true },
+      });
+
+      if (!currentEnrollment) throw new Error('No active enrollment found');
+
+      // ========== VERIFICAR PAGAMENTOS PENDENTES ==========
+      const hasPendingPayments = currentEnrollment.payments.some(
+        (payment) => payment.status !== 'PAID' && payment.dueDate < new Date(),
+      );
+
+      if (hasPendingPayments) {
+        throw new Error('Cannot renew: There are pending payments.');
+      }
+
+      // ========== RECUPERAR DADOS DO NOVO PLANO ==========
+      const planData = await prisma.plan.findFirst({ where: { id: planId } });
+      if (!planData) throw new Error('Plan not found');
+
+      const { durationInDays, price } = planData;
+      const monthsQuantity =
+        planDetailsIndexedByDurationInDays[durationInDays].monthsQuantity;
+
+      // ========== CRIAR NOVA MATRÍCULA ==========
+      const startDate = new Date();
+      let endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + monthsQuantity);
+
+      const newEnrollment = await prisma.enrollment.create({
+        data: {
+          student: { connect: { id: currentEnrollment.studentId } },
+          plan: { connect: { id: planData.id } },
+          class: { connect: { id: currentEnrollment.classId as string } }, // Mantém a mesma turma
+          startDate,
+          endDate,
+          paymentDay: currentEnrollment.paymentDay,
+          status: 'active',
         },
-        status: status ? { equals: status } : undefined,
-        planId: planId ? { equals: planId } : undefined,
-        paymentDay: paymentDay ? { equals: paymentDay } : undefined,
-      },
+      });
+
+      await prisma.enrollment.update({
+        where: { id: currentEnrollment.id },
+        data: { status: 'archived' },
+      });
+
+      // ========== GERAR NOVOS PAGAMENTOS ==========
+      let payments = [] as CreatePaymentDto[];
+      let firstPaymentDate = new Date(startDate);
+      firstPaymentDate.setDate(currentEnrollment.paymentDay - 1);
+
+      if (firstPaymentDate < startDate) {
+        firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
+      }
+
+      for (let i = 0; i < monthsQuantity; i++) {
+        let dueDate = new Date(firstPaymentDate);
+        dueDate.setMonth(dueDate.getMonth() + i);
+
+        let lastDayOfMonth = new Date(
+          dueDate.getFullYear(),
+          dueDate.getMonth() + 1,
+          0,
+        ).getDate();
+
+        if (currentEnrollment.paymentDay > lastDayOfMonth) {
+          dueDate.setDate(lastDayOfMonth);
+        } else {
+          dueDate.setDate(currentEnrollment.paymentDay - 1);
+        }
+
+        payments.push({
+          enrollmentId: newEnrollment.id,
+          amount: price,
+          dueDate,
+          status: 'PENDING',
+        });
+      }
+
+      await prisma.payment.createMany({ data: payments });
+
+      return newEnrollment;
+    });
+  }
+
+  async cancelEnrollment(enrollmentId: string) {
+    return this.prisma.$transaction(async (prisma) => {
+      const enrollment = await prisma.enrollment.findFirst({
+        where: { id: enrollmentId, status: 'active' },
+        include: { payments: true },
+      });
+
+      if (!enrollment) throw new Error('No active enrollment found');
+
+      await prisma.enrollment.update({
+        where: { id: enrollmentId },
+        data: { status: 'canceled' },
+      });
+
+      // Cancela os pagamentos futuros, mas mantém os já pagos
+      await prisma.payment.updateMany({
+        where: { enrollmentId, status: 'PENDING' },
+        data: { status: 'CANCELED' },
+      });
+
+      return { message: 'Enrollment canceled successfully' };
     });
   }
 
   async findOne(id: string) {
-    return await this.prisma.enrollment.findUnique({ where: { id } });
-  }
-
-  async update(id: string, updateEnrollmentDto: UpdateEnrollmentDto) {
-    // ========== HANDLE ERRORS ==========
-
-    const currentEnrollment = await this.prisma.enrollment.findUnique({
+    return await this.prisma.enrollment.findUnique({
       where: { id },
-    });
-
-    if (!currentEnrollment) {
-      throw new Error('Enrollment not found');
-    }
-
-    const currentClass = await this.prisma.class.findFirst({
-      where: { id: updateEnrollmentDto.classId },
-    });
-
-    if (!currentClass?.id) {
-      throw new Error('Class not found');
-    }
-
-    const currentPlan = await this.prisma.plan.findFirst({
-      where: { id: updateEnrollmentDto.planId },
-    });
-
-    if (!currentPlan?.id) {
-      throw new Error('Plan not found');
-    }
-
-    // ========== UPDATE STUDENT ==========
-
-    const { student } = updateEnrollmentDto;
-
-    if (student) {
-      const {
-        firstName,
-        lastName,
-        birthDate,
-        cpf,
-        rg,
-        phone,
-        instagram,
-        email,
-        obs,
-        password,
-      } = student as StudentDto;
-
-      await this.prisma.student.update({
-        where: { id: updateEnrollmentDto.studentId },
-        data: {
-          firstName,
-          lastName,
-          birthDate,
-          cpf,
-          rg,
-          phone,
-          instagram,
-          email,
-          obs,
-          password,
+      include: {
+        payments: {
+          orderBy: {
+            id: 'asc'
+          }
         },
-      });
-    }
-
-    // ========== UPDATE ENROLLMENT ==========
-
-    return await this.prisma.enrollment.update({
-      where: { id },
-      data: {
-        startDate: updateEnrollmentDto.startDate,
-        endDate: updateEnrollmentDto.endDate,
-        status: updateEnrollmentDto.status,
-        studentId: updateEnrollmentDto.studentId,
-        planId: updateEnrollmentDto.planId,
-        paymentDay: updateEnrollmentDto.paymentDay,
-        classId: updateEnrollmentDto.classId,
+        class: {
+          include: {
+            modality: true,
+            classLevel: true
+          }
+        }
       },
     });
   }

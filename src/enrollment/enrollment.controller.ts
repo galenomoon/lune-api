@@ -1,13 +1,12 @@
 import {
   Controller,
-  Get,
   Post,
   Body,
   Patch,
   Param,
   Delete,
   UseGuards,
-  Query,
+  Get,
 } from '@nestjs/common';
 import { EnrollmentService } from './enrollment.service';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
@@ -19,29 +18,14 @@ import { AuthGuard } from 'src/auth/auth.guard';
 export class EnrollmentController {
   constructor(private readonly enrollmentService: EnrollmentService) {}
 
-  @Post()
-  async create(@Body() createEnrollmentDto: CreateEnrollmentDto) {
-    return await this.enrollmentService.create(createEnrollmentDto);
-  }
-
-  @Get()
-  async findAll(
-    @Query('name') name: string,
-    @Query('status') status: string,
-    @Query('planId') planId: string,
-    @Query('paymentDay') paymentDay: number,
-  ) {
-    return await this.enrollmentService.findAll({
-      name,
-      status,
-      planId,
-      paymentDay,
-    });
-  }
-
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return await this.enrollmentService.findOne(id);
+  }
+
+  @Post()
+  async create(@Body() createEnrollmentDto: CreateEnrollmentDto) {
+    return await this.enrollmentService.create(createEnrollmentDto);
   }
 
   @Patch(':id')
@@ -52,8 +36,18 @@ export class EnrollmentController {
     return await this.enrollmentService.update(id, updateEnrollmentDto);
   }
 
+  @Post('renew/:id')
+  async renew(@Param('id') id: string, @Body() { planId }: { planId: string }) {
+    return await this.enrollmentService.renew(id, planId);
+  }
+
   @Delete(':id')
   async remove(@Param('id') id: string) {
     return await this.enrollmentService.remove(id);
+  }
+
+  @Post('cancel/:id')
+  async cancelEnrollment(@Param('id') id: string) {
+    return await this.enrollmentService.cancelEnrollment(id);
   }
 }

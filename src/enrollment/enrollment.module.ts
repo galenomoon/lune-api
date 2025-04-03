@@ -4,6 +4,7 @@ import { EnrollmentController } from './enrollment.controller';
 import { PrismaService } from 'src/config/prisma.service';
 
 @Module({
+  imports: [],
   controllers: [EnrollmentController],
   providers: [EnrollmentService, PrismaService],
 })

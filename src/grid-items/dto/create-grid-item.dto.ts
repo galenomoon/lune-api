@@ -1,7 +1,5 @@
 export class CreateGridItemDto {
-  dayOfWeek: string;
-  startTime: string;
-  endTime: string;
+  gridItems: GridItem[]
   class: Class;
 }
 
@@ -19,6 +17,11 @@ class Class {
   classLevel?: ClassLevel;
 }
 
+class GridItem {
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+}
 class Modality {}
 class ClassLevel {}
 class Teacher {}

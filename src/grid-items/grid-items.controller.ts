@@ -49,7 +49,7 @@ export class GridItemsController {
   @Patch(':id')
   async update(
     @Param('id') id: string,
-    @Body() updateGridItemDto: UpdateGridItemDto,
+    @Body() updateGridItemDto: CreateGridItemDto,
   ) {
     return await this.gridItemsService.update(id, updateGridItemDto);
   }
