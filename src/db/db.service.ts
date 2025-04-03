@@ -1,7 +1,9 @@
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/config/prisma.service';
 
+@Injectable()
 export class DBService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async fix() {
     const leads = await this.prisma.lead.findMany();

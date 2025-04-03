@@ -5,10 +5,10 @@ import { DBService } from './db.service';
 @UseGuards(AuthGuard)
 @Controller('db')
 export class DBController {
-  constructor(private readonly db: DBService) {}
+  constructor(private readonly dbService: DBService) {}
 
   @Get('fix')
   async fix() {
-    return await this.db.fix();
+    return await this.dbService.fix();
   }
 }
