@@ -1,31 +1,33 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from 'src/config/prisma.service';
 
 export class DBService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaService) {}
 
   async fix() {
     const leads = await this.prisma.lead.findMany();
     const teachers = await this.prisma.teacher.findMany();
 
     for (const lead of leads) {
-      const normalizedPhone = lead?.phone?.replace(/\D/g, '');
-
-      if ((lead?.phone !== normalizedPhone) && !!lead?.phone) {
-        await this.prisma.lead.update({
-          where: { id: lead.id },
-          data: { phone: normalizedPhone },
-        });
+      if (lead?.phone) {
+        const normalizedPhone = lead.phone.replace(/\D/g, '');
+        if (lead.phone !== normalizedPhone) {
+          await this.prisma.lead.update({
+            where: { id: lead.id },
+            data: { phone: normalizedPhone },
+          });
+        }
       }
     }
 
     for (const teacher of teachers) {
-      const normalizedPhone = teacher?.phone?.replace(/\D/g, '');
-
-      if ((teacher?.phone !== normalizedPhone) && !!teacher?.phone) {
-        await this.prisma.teacher.update({
-          where: { id: teacher.id },
-          data: { phone: normalizedPhone },
-        });
+      if (teacher?.phone) {
+        const normalizedPhone = teacher.phone.replace(/\D/g, '');
+        if (teacher.phone !== normalizedPhone) {
+          await this.prisma.teacher.update({
+            where: { id: teacher.id },
+            data: { phone: normalizedPhone },
+          });
+        }
       }
     }
   }
