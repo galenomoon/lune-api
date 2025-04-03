@@ -14,6 +14,10 @@ import { EnrollmentModule } from './enrollment/enrollment.module';
 import { StudentsModule } from './students/students.module';
 import { PaymentModule } from './payment/payment.module';
 import { ContractModule } from './contract/contracts.module';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { join } from 'path';
+
 
 @Module({
   imports: [
@@ -30,6 +34,25 @@ import { ContractModule } from './contract/contracts.module';
     StudentsModule,
     PaymentModule,
     ContractModule,
+    MailerModule.forRoot({
+      transport: {
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      },
+      defaults: {
+        from: '"Lune Escola de Dança" no-reply@luneescoladedanca.com',
+      },
+      template: {
+        dir: join(__dirname, 'templates'),
+        adapter: new HandlebarsAdapter(),
+        options: {
+          strict: true,
+        },
+      },
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],

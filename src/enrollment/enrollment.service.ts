@@ -7,10 +7,11 @@ import { CreatePaymentDto } from 'src/payment/dto/create-payment.dto';
 import { planDetailsIndexedByDurationInDays } from 'src/constants';
 import { createPayments } from 'src/utils/createPayments';
 import { getDateRangeByPlanDurationInDays } from 'src/utils/getDateRangeByPlanDurationInDays';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class EnrollmentService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private readonly mail: MailService) {}
 
   async create(createEnrollmentDto: CreateEnrollmentDto) {
     const { student, emergencyContact, address, enrollment } =
@@ -73,6 +74,14 @@ export class EnrollmentService {
       });
 
       await prisma.payment.createMany({ data: payments });
+
+      this.mail.sendContract({
+        email: student?.email,
+        context: {
+          contract_link: `${process.env.API_URL}/contracts/${createdEnrollment?.id}/download`,
+          name: student?.firstName,
+        }
+      })
 
       return createdEnrollment;
     });
