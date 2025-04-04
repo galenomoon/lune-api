@@ -77,7 +77,7 @@ model ContractSignToken {
   token        String   @unique
   validUntil   DateTime
   usedAt       DateTime? // Nulo até o token ser usado
-  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 }
 
 model Payment {
