@@ -12,10 +12,14 @@ import { formatDate } from 'src/utils/formatDate';
 const ImageModule = require('docxtemplater-image-module-free');
 import * as crypto from 'crypto';
 import * as dayjs from 'dayjs';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class ContractsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mail: MailService,
+  ) {}
 
   async generateContract(enrollmentId: string) {
     const modalities = await this.prisma.modality.findMany();
@@ -108,7 +112,7 @@ export class ContractsService {
         }
         throw new Error('Formato de imagem inválido.');
       },
-      getSize: () => [350, 350/2],
+      getSize: () => [350, 350 / 2],
       fileType: 'docx',
       centered: true,
     };
@@ -152,7 +156,7 @@ export class ContractsService {
       endDate: formatDate(enrollmentData.endDate),
       todayDay,
       todayMonth: months[todayMonth],
-      image: enrollmentData.signature
+      image: enrollmentData.signature,
     });
 
     let docxBuffer = doc
@@ -175,7 +179,7 @@ export class ContractsService {
     }
 
     const token = crypto.randomBytes(32).toString('hex');
-    const validUntil = dayjs().add(1, 'day').toDate(); 
+    const validUntil = dayjs().add(1, 'day').toDate();
 
     await this.prisma.contractSignToken.upsert({
       where: { enrollmentId },
@@ -216,13 +220,24 @@ export class ContractsService {
       throw new BadRequestException('Token inválido ou expirado');
     }
 
-    await this.prisma.enrollment.update({
+    const signedEnrollment = await this.prisma.enrollment.update({
       where: { id: contractToken.enrollmentId },
       data: { signature },
+      include: { student: true },
     });
 
+    if (signedEnrollment?.student?.email) {
+      this.mail.sendContract({
+        email: signedEnrollment?.student?.email,
+        context: {
+          contract_link: `${process.env.API_URL}/contracts/${signedEnrollment?.id}/download`,
+          name: signedEnrollment.student?.firstName,
+        },
+      });
+    }
+
     await this.prisma.contractSignToken.delete({
-      where: { token }
+      where: { token },
     });
 
     return { message: 'Contrato assinado com sucesso!' };
