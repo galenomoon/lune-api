@@ -11,7 +11,10 @@ import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class EnrollmentService {
-  constructor(private prisma: PrismaService, private readonly mail: MailService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly mail: MailService,
+  ) {}
 
   async create(createEnrollmentDto: CreateEnrollmentDto) {
     const { student, emergencyContact, address, enrollment } =
@@ -75,13 +78,15 @@ export class EnrollmentService {
 
       await prisma.payment.createMany({ data: payments });
 
-      this.mail.sendContract({
-        email: student?.email,
-        context: {
-          contract_link: `${process.env.API_URL}/contracts/${createdEnrollment?.id}/download`,
-          name: student?.firstName,
-        }
-      })
+      if (student?.email) {
+        this.mail.sendContract({
+          email: student?.email,
+          context: {
+            contract_link: `${process.env.API_URL}/contracts/${createdEnrollment?.id}/download`,
+            name: student?.firstName,
+          },
+        });
+      }
 
       return createdEnrollment;
     });
@@ -214,15 +219,15 @@ export class EnrollmentService {
       include: {
         payments: {
           orderBy: {
-            id: 'asc'
-          }
+            id: 'asc',
+          },
         },
         class: {
           include: {
             modality: true,
-            classLevel: true
-          }
-        }
+            classLevel: true,
+          },
+        },
       },
     });
   }

@@ -41,6 +41,7 @@ export class ContractsService {
       throw new NotFoundException('Assinatura não encontrada');
     }
 
+    const plan = enrollmentData?.plan;
     const student = enrollmentData.student;
     const address = student?.addresses?.[0];
     const emergencyContact = student?.emergencyContacts?.[0];
@@ -56,7 +57,7 @@ export class ContractsService {
       throw new NotFoundException('Template de contrato não encontrado');
     }
 
-    const today = new Date();
+    const today = enrollmentData.createdAt;
     const todayDay = today.getDate().toString();
     const todayMonth = (today.getMonth() + 1).toString();
 
@@ -81,6 +82,21 @@ export class ContractsService {
       return acc;
     }, {});
 
+    const daysOptions = [5, 10, 15].reduce((acc, paymentDay) => {
+      acc[paymentDay] = '  ';
+      return acc;
+    }, {});
+
+    const planPeriod = [30, 90, 180].reduce((acc, durationInDay) => {
+      acc[durationInDay] = '  ';
+      return acc;
+    }, {});
+
+    const weeklyClasses = [1, 2].reduce((acc, curr) => {
+      acc[curr] = '  ';
+      return acc;
+    }, {});
+
     const content = fs.readFileSync(templatePath, 'binary');
     const zip = new PizZip(content);
 
@@ -92,7 +108,7 @@ export class ContractsService {
         }
         throw new Error('Formato de imagem inválido.');
       },
-      getSize: () => [300, 150],
+      getSize: () => [350, 350/2],
       fileType: 'docx',
       centered: true,
     };
@@ -121,20 +137,22 @@ export class ContractsService {
       phone: student.phone,
       instagram: student.instagram,
       email: student.email,
+      ...daysOptions,
       [enrollmentData.paymentDay]: 'X',
       ...modalitiesOptions,
       [enrollmentData?.class?.modality?.name
         .toLowerCase()
         .replaceAll(/-/g, '')
         .replaceAll(' ', '') || 'none']: 'X',
-      startDate: '',
-      endDate: '',
+      ...planPeriod,
+      [plan?.durationInDays]: 'X',
+      ...weeklyClasses,
+      [enrollmentData.plan.weeklyClasses]: 'X',
+      startDate: formatDate(enrollmentData.startDate),
+      endDate: formatDate(enrollmentData.endDate),
       todayDay,
       todayMonth: months[todayMonth],
-      image: enrollmentData.signature,
-
-      // finalizar preenchimento de contrato
-      // atualizar contrato
+      image: enrollmentData.signature
     });
 
     let docxBuffer = doc
