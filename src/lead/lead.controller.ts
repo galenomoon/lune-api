@@ -72,6 +72,20 @@ export class LeadController {
     return await this.leadService.update(id, updateLeadDto);
   }
 
+  @Patch('batch/update')
+  @HttpCode(200)
+  async batchUpdate(@Body() updateLeadDto: {
+    ids: string[];
+    city: string;
+    findUsBy: string;
+    modalityOfInterest: string;
+    preferencePeriod: string;
+    status: string;
+    score: number;
+  }) {
+    return await this.leadService.batchUpdate(updateLeadDto);
+  }
+
   @Delete(':id')
   @HttpCode(204)
   async remove(@Param('id') id: string) {

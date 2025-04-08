@@ -117,4 +117,43 @@ export class LeadService {
       newLeadsLast7Days,
     };
   }
+
+  async batchUpdate(updateLeadDto: {
+    ids: string[];
+    city?: string;
+    findUsBy?: string;
+    modalityOfInterest?: string;
+    preferencePeriod?: string;
+    status?: string;
+    score?: number;
+  }) {
+    const { ids, city, findUsBy, modalityOfInterest, preferencePeriod, status, score } = updateLeadDto;
+  
+    if (!ids || ids.length === 0) {
+      throw new Error('Nenhum ID fornecido para atualização em lote.');
+    }
+
+    const dataToUpdate: any = {};
+  
+    if (!!city) dataToUpdate.city = city;
+    if (!!findUsBy) dataToUpdate.findUsBy = findUsBy;
+    if (!!modalityOfInterest) dataToUpdate.modalityOfInterest = modalityOfInterest;
+    if (!!preferencePeriod) dataToUpdate.preferencePeriod = preferencePeriod;
+    if (!!status) dataToUpdate.status = Number(status);
+    if (!!score) dataToUpdate.score = Number(score);
+  
+    const result = await this.prisma.lead.updateMany({
+      where: {
+        id: {
+          in: ids,
+        },
+      },
+      data: dataToUpdate,
+    });
+  
+    return {
+      message: `Atualizados ${result.count} leads com sucesso.`,
+      updatedCount: result.count,
+    };
+  }
 }

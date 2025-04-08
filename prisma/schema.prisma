@@ -51,30 +51,30 @@ model Student {
 }
 
 model Enrollment {
-  id         String    @id @default(cuid())
-  startDate  DateTime
-  endDate    DateTime
-  status     String // 'active', 'canceled', 'pending', 'archived'
-  studentId  String
-  student    Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  planId     String
-  plan       Plan      @relation(fields: [planId], references: [id])
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  paymentDay Int
-  class      Class?    @relation(fields: [classId], references: [id])
-  classId    String?
-  payments   Payment[]
-  signature  String?
+  id                String             @id @default(cuid())
+  startDate         DateTime
+  endDate           DateTime
+  status            String // 'active', 'canceled', 'pending', 'archived'
+  studentId         String
+  student           Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  planId            String
+  plan              Plan               @relation(fields: [planId], references: [id])
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  paymentDay        Int
+  class             Class?             @relation(fields: [classId], references: [id])
+  classId           String?
+  payments          Payment[]
+  signature         String?
   contractSignToken ContractSignToken?
 
   @@map("enrollments")
 }
 
 model ContractSignToken {
-  id           String   @id @default(uuid())
-  enrollmentId String   @unique
-  token        String   @unique
+  id           String     @id @default(uuid())
+  enrollmentId String     @unique
+  token        String     @unique
   validUntil   DateTime
   usedAt       DateTime? // Nulo até o token ser usado
   enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
@@ -259,9 +259,3 @@ model ClassLevel {
 
   @@map("class_levels")
 }
-
-// SOON...
-
-// ===================== LOGS =====================
-
-// ===================== FREQUENCY =====================
