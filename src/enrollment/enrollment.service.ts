@@ -78,15 +78,15 @@ export class EnrollmentService {
 
       await prisma.payment.createMany({ data: payments });
 
-      if (student?.email) {
-        this.mail.sendContract({
-          email: student?.email,
-          context: {
-            contract_link: `${process.env.API_URL}/contracts/${createdEnrollment?.id}/download`,
-            name: student?.firstName,
-          },
-        });
-      }
+      // if (student?.email) {
+      //   this.mail.sendContract({
+      //     email: student?.email,
+      //     context: {
+      //       contract_link: `${process.env.API_URL}/contracts/${createdEnrollment?.id}/download`,
+      //       name: student?.firstName,
+      //     },
+      //   });
+      // }
 
       return createdEnrollment;
     });
