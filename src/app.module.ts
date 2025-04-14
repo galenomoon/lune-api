@@ -18,6 +18,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { MailerModule } from '@nestjs-modules/mailer';
 import { join } from 'path';
 import { DBModule } from './db/db.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { DBModule } from './db/db.module';
     PaymentModule,
     ContractModule,
     DBModule,
+    MailModule,
     MailerModule.forRoot({
       transport: {
         service: 'gmail',

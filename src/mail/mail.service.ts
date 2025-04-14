@@ -5,12 +5,12 @@ import { MailerService } from '@nestjs-modules/mailer';
 export class MailService {
   constructor(private readonly mailerService: MailerService) {}
 
-  async sendContract({ email, context }) {
+  async sendContract({ email, context, template = 'contract_to_read' }) {
     try {
       await this.mailerService.sendMail({
         to: email,
         subject: 'Seja Bem vindo à Lune Escola de Dança! 💜✨',
-        template: 'contract',
+        template,
         context: {
           contract_link: context.contract_link,
           name: context.name
