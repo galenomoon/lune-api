@@ -19,6 +19,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { join } from 'path';
 import { DBModule } from './db/db.module';
 import { MailModule } from './mail/mail.module';
+import { AddressesModule } from './addresses/addresses.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { MailModule } from './mail/mail.module';
         },
       },
     }),
+    AddressesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

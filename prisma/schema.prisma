@@ -174,12 +174,40 @@ model Lead {
   city               String?
   instagram          String?
   email              String?
-  score              Int // 0 - 5
+  score              Int
   status             Int      @default(0) // 0 - New, 1 - Contacted, 2 - Enrolled
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   @@map("leads")
+}
+
+model TrialInvite {
+  id         String      @id @default(uuid())
+  token      String      @unique
+  usedAt     DateTime?
+  gridItemId String
+  gridItem   GridItem    @relation(fields: [gridItemId], references: [id])
+  validUntil DateTime
+  trialClass TrialClass?
+  createdAt  DateTime    @default(now())
+
+  @@map("trial_invites")
+}
+
+model TrialClass {
+  id         String       @id @default(cuid())
+  name       String
+  phone      String
+  modality   String
+  gridItemId String
+  gridItem   GridItem     @relation(fields: [gridItemId], references: [id])
+  date       DateTime
+  inviteId   String?      @unique
+  invite     TrialInvite? @relation(fields: [inviteId], references: [id])
+  createdAt  DateTime     @default(now())
+
+  @@map("trial_classes")
 }
 
 // ============ Teacher ============
@@ -205,14 +233,16 @@ model Teacher {
 // ============ GRID CLASSES ============
 //OK
 model GridItem {
-  id        String   @id @default(cuid())
-  dayOfWeek String
-  startTime String
-  endTime   String
-  classId   String?
-  class     Class?   @relation(fields: [classId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String        @id @default(cuid())
+  dayOfWeek    String
+  startTime    String
+  endTime      String
+  classId      String?
+  class        Class?        @relation(fields: [classId], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  trialClasses TrialClass[]
+  TrialInvite  TrialInvite[]
 
   @@map("grid_items")
 }

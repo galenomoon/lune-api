@@ -231,6 +231,37 @@ export class GridItemsService {
     };
   }
 
+  async listGridItems() {
+    const gridItems = await this.prisma.gridItem.findMany({
+      orderBy: { startTime: 'asc' },
+      include: {
+        class: {
+          include: {
+            modality: true,
+            classLevel: true,
+            enrollments: true,
+            teacher: true,
+          },
+        },
+      },
+    });
+
+    return gridItems.map((item) => ({
+      id: item.id,
+      dayOfWeek: item.dayOfWeek,
+      startTime: item.startTime,
+      endTime: item.endTime,
+      classId: item.classId,
+      maxStudents: item.class?.maxStudents,
+      enrolledStudents: item.class?.enrollments.length,
+      modality: item.class?.modality.name,
+      modalityId: item.class?.modality.id,
+      level: item.class?.classLevel.name,
+      description: item.class?.description,
+      teacherName: item.class?.teacher?.firstName,
+    }));
+  }
+
   async findOne(id: string) {
     return await this.prisma.gridItem.findUnique({ where: { id } });
   }

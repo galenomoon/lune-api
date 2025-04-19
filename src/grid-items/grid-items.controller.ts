@@ -41,6 +41,11 @@ export class GridItemsController {
     });
   }
 
+  @Get('list')
+  async listGridItems() {
+    return await this.gridItemsService.listGridItems();
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return await this.gridItemsService.findOne(id);
