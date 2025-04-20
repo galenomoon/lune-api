@@ -44,13 +44,14 @@ export class StudentsController {
   @Post('add/enrollment/:id')
   async addEnrollment(
     @Param('id') id: string,
-    @Body() { planId, classId, startDate, paymentDay },
+    @Body() { planId, classId, startDate, paymentDay, durationInDays },
   ) {
     return await this.studentsService.addEnrollment(id, {
       planId,
       classId,
       startDate,
       paymentDay,
+      durationInDays
     });
   }
 

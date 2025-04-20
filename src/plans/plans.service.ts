@@ -11,7 +11,18 @@ export class PlansService {
     return await this.prisma.plan.create({ data: createPlanDto });
   }
 
-  async findAll() {
+  async findAll(query: { isSecondary?: boolean }) {
+    const { isSecondary } = query;
+    if (isSecondary) {
+      return await this.prisma.plan.findFirst({
+        where: {
+          isSecondary: {
+            equals: true,
+          },
+        },
+      });
+    }
+
     const res = await this.prisma.plan.findMany({
       include: {
         enrollments: true,

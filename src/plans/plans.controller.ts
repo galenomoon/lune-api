@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { PlansService } from './plans.service';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
@@ -15,8 +15,8 @@ export class PlansController {
   }
 
   @Get()
-  async findAll() {
-    return await this.plansService.findAll();
+  async findAll(@Query() query: { isSecondary?: boolean }) {
+    return await this.plansService.findAll(query);
   }
 
   @Get(':id')

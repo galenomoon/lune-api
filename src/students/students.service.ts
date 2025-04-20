@@ -112,8 +112,7 @@ export class StudentsService {
               };
             }),
           planName:
-            planDetailsIndexedByDurationInDays[enrollment!.plan!.durationInDays]
-              .name,
+            planDetailsIndexedByDurationInDays[enrollment!.plan!.durationInDays as number]?.name || '',
           planId: enrollment!.plan.id,
           enrollment
         };
@@ -139,11 +138,12 @@ export class StudentsService {
       );
 
       const hasOverduePayments = enrollments.some(
-        (enrollment) => enrollment.paymentStatus === 'OVERDUE',
+        (enrollment) => enrollment!.paymentStatus === 'OVERDUE',
       );
-      const hasOnlyCanceledPayments = enrollments.filter(
-        (enrollment) => enrollment.paymentStatus === 'CANCELED',
-      ).length === enrollments.length;
+      const hasOnlyCanceledPayments =
+        enrollments.filter(
+          (enrollment) => enrollment!.paymentStatus === 'CANCELED',
+        ).length === enrollments.length;
 
       return {
         id: student.id,
@@ -152,9 +152,9 @@ export class StudentsService {
           .join(' '),
         daysToExpire,
         status: enrollments.length
-          ? 
-          hasOnlyCanceledPayments ? 'CANCELED' :
-             hasOverduePayments
+          ? hasOnlyCanceledPayments
+            ? 'CANCELED'
+            : hasOverduePayments
               ? 'OVERDUE'
               : hasPendingPayments
                 ? 'PENDING'
@@ -163,23 +163,36 @@ export class StudentsService {
         phone: student.phone,
         instagram: student.instagram,
         enrollments,
-        student
+        student,
       };
     });
   }
 
   async addEnrollment(
     studentId: string,
-    { planId, classId, startDate: st, paymentDay },
+    {
+      planId,
+      classId,
+      startDate: st,
+      paymentDay,
+      durationInDays,
+    }: {
+      planId: string;
+      classId: string;
+      startDate: Date;
+      paymentDay: number;
+      durationInDays: number;
+    },
   ) {
     return this.prisma.$transaction(async (prisma) => {
       // ========== HANDLE ERRORS ==========
-      const classData = await prisma.class.findFirst({ where: { id: classId }});
+      const classData = await prisma.class.findFirst({
+        where: { id: classId },
+      });
       if (!classData) throw new Error('Class not found');
 
       const planData = await prisma.plan.findFirst({ where: { id: planId } });
       if (!planData) throw new Error('Plan not found');
-      const { durationInDays } = planData;
 
       // ========== CREATE ENROLLMENT ==========
 
@@ -204,8 +217,8 @@ export class StudentsService {
 
       const payments = createPayments({
         enrollment: newEnrollment,
-        plan: planData,
-        enrollmentTax: 50
+        plan: { ...planData, durationInDays },
+        enrollmentTax: 50,
       });
 
       await prisma.payment.createMany({ data: payments });

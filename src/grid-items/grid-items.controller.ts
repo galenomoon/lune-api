@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { GridItemsService } from './grid-items.service';
 import { CreateGridItemDto } from './dto/create-grid-item.dto';
-import { UpdateGridItemDto } from './dto/update-grid-item.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
 
 @UseGuards(AuthGuard)

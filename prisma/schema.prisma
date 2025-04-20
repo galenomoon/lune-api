@@ -147,9 +147,10 @@ model EmergencyContact {
 model Plan {
   id             String       @id @default(cuid())
   name           String
-  weeklyClasses  Int
+  weeklyClasses  Int?
   description    String?
-  durationInDays Int
+  durationInDays Int?
+  isSecondary    Boolean?
   price          Float
   status         Boolean      @default(true) // true = ativo, false = inativo
   createdAt      DateTime     @default(now())
@@ -211,7 +212,7 @@ model TrialClass {
 }
 
 // ============ Teacher ============
-//OK
+
 model Teacher {
   id        String   @id @default(cuid())
   firstName String
@@ -231,7 +232,7 @@ model Teacher {
 }
 
 // ============ GRID CLASSES ============
-//OK
+
 model GridItem {
   id           String        @id @default(cuid())
   dayOfWeek    String

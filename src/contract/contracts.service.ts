@@ -149,9 +149,9 @@ export class ContractsService {
         .replaceAll(/-/g, '')
         .replaceAll(' ', '') || 'none']: 'X',
       ...planPeriod,
-      [plan?.durationInDays]: 'X',
+      [plan?.durationInDays || 0]: 'X',
       ...weeklyClasses,
-      [enrollmentData.plan.weeklyClasses]: 'X',
+      [enrollmentData.plan.weeklyClasses || 0]: 'X',
       startDate: formatDate(enrollmentData.startDate),
       endDate: formatDate(enrollmentData.endDate),
       todayDay,

@@ -126,7 +126,7 @@ export class EnrollmentService {
 
       const { durationInDays, price } = planData;
       const monthsQuantity =
-        planDetailsIndexedByDurationInDays[durationInDays].monthsQuantity;
+        planDetailsIndexedByDurationInDays[durationInDays as number].monthsQuantity;
 
       // ========== CRIAR NOVA MATRÍCULA ==========
       const startDate = new Date();
