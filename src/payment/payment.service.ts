@@ -55,9 +55,60 @@ export class PaymentService {
       },
     });
 
-    console.log(paymentsThisMonth)
+    const activeEnrollments = await this.prisma.enrollment.findMany({
+      where: {
+        status: 'active',
+      },
+      include: {
+        student: {
+          select: {
+            firstName: true,
+            lastName: true,
+            cpf: true,
+          },
+        },
+        class: {
+          select: {
+            modality: true,
+            description: true,
+          }
+        },
+        plan: {
+          select: {
+            durationInDays: true,
+          },
+        },
+      },
+    });
 
-    const totalToReceive = paymentsThisMonth.reduce(
+    const classes = await this.prisma.class.findMany({
+      where: {
+        enrollments: {
+          some: {
+            status: 'active',
+          },
+        },
+      },
+      include: {
+        enrollments: {
+          where: {
+            status: 'active',
+          },  
+          include: {
+            student: {
+              select: {
+                firstName: true,
+                lastName: true,
+                cpf: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+
+    const totalToReceive = paymentsThisMonth.filter((p) => p.status === 'PENDING').reduce(
       (sum, p) => sum + p.amount,
       0,
     );
@@ -74,6 +125,8 @@ export class PaymentService {
       paymentsThisMonth,
       totalToReceive,
       totalReceived,
+      classes,
+      activeEnrollments: activeEnrollments.length,
       month: formatted,
     };
   }
