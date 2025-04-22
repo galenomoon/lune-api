@@ -14,7 +14,7 @@ datasource db {
 }
 
 // ============ User ✅ ============
-//OK
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -161,7 +161,7 @@ model Plan {
 }
 
 //  ============ CRM ============
-//OK
+
 model Lead {
   id                 String   @id @default(cuid())
   firstName          String
@@ -227,6 +227,7 @@ model Teacher {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   classes   Class[]
+  password  String?
 
   @@map("teachers")
 }
