@@ -7,5 +7,6 @@ export class CreateTeacherDto {
   phone: string;
   email?: string;
   instagram?: string;
+  password: string;
   priceHour: number;
 }
