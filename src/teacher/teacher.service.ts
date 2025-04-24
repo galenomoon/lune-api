@@ -15,6 +15,7 @@ import {
 import { ptBR } from 'date-fns/locale';
 import { getDayLabel } from 'src/utils/getDayLabel';
 import { buildScheduleWithStatus } from 'src/utils/buildScheduleWithStatus';
+import { newBrazilianDate } from 'src/utils/newBrazilianDate';
 
 @Injectable()
 export class TeacherService {
@@ -33,7 +34,7 @@ export class TeacherService {
   }
 
   async getTeacherSchedule(teacherId: string, targetDate?: string) {
-    const baseDate = targetDate ? parseISO(targetDate) : new Date();
+    const baseDate = targetDate ? parseISO(targetDate) : newBrazilianDate();
     let currentDate = baseDate;
     let gridItems: any[] = [];
 
@@ -94,7 +95,7 @@ export class TeacherService {
       : null;
 
     const hasTodayClasses = schedule.some((item) =>
-      isSameDay(item.startDateTime, new Date()),
+      isSameDay(item.startDateTime, newBrazilianDate()),
     );
 
     return {
