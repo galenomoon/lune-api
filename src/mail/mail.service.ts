@@ -18,7 +18,7 @@ export class MailService {
       }).then(()=> console.log("Email enviado com sucesso"))
 
     } catch (error) {
-      console.error('Error sending welcome email:', error);
+      console.error('Error sending contract email:', error);
     }
   }
 

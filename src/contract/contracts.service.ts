@@ -227,13 +227,13 @@ export class ContractsService {
     });
 
     if (signedEnrollment?.student?.email) {
-      this.mail.sendContract({
-        email: signedEnrollment?.student?.email,
-        context: {
-          contract_link: `${process.env.API_URL}/contracts/${signedEnrollment?.id}/download`,
-          name: signedEnrollment.student?.firstName,
-        },
-      });
+      // this.mail.sendContract({
+      //   email: signedEnrollment?.student?.email,
+      //   context: {
+      //     contract_link: `${process.env.API_URL}/contracts/${signedEnrollment?.id}/download`,
+      //     name: signedEnrollment.student?.firstName,
+      //   },
+      // });
     }
 
     await this.prisma.contractSignToken.delete({
