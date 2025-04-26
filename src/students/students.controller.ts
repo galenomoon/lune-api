@@ -25,12 +25,12 @@ export class StudentsController {
     @Query('planId') planId: string,
     @Query('paymentDay') paymentDay: number,
   ) {
-    return await this.studentsService.findAll({
-      name,
-      status,
-      planId,
-      paymentDay,
-    });
+    return await this.studentsService.findAll();
+  }
+
+  @Get('search')
+  async search(@Query('query') name: string) {
+    return await this.studentsService.search({ name });
   }
 
   @Patch(':id')

@@ -10,25 +10,18 @@ import { createPayments } from 'src/utils/createPayments';
 export class StudentsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll({
-    name,
-    status,
-    planId,
-    paymentDay,
-  }: {
-    name: string;
-    status: string;
-    planId: string;
-    paymentDay: number;
-  }) {
+  async findAll() {
     const students = await this.prisma.student.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
       include: {
         enrollments: {
           where: {
             status: { not: 'archived' },
           },
           orderBy: {
-            createdAt: 'asc',
+            createdAt: 'desc',
           },
           include: {
             plan: true,
@@ -165,6 +158,10 @@ export class StudentsService {
         enrollments,
         student,
       };
+    }).sort((a, b) => {
+      if (a.status === 'CANCELED' && b.status !== 'CANCELED') return 1;
+      if (a.status !== 'CANCELED' && b.status === 'CANCELED') return -1;
+      return 0;
     });
   }
 
@@ -238,5 +235,35 @@ export class StudentsService {
     return await this.prisma.student.delete({
       where: { id },
     });
+  }
+
+  async search({ name = '' }) {
+    const students = await this.prisma.student.findMany({
+      where: {
+        OR: name
+          ? [
+              { firstName: { contains: name, mode: 'insensitive' } },
+              { lastName: { contains: name, mode: 'insensitive' } },
+            ]
+          : undefined,
+      },
+      include: {
+        enrollments: {
+          include: {
+            class: {
+              include: {
+                modality: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return students.map((student) => ({
+      type: 'STUDENT',
+      modalities: student.enrollments.map((en) => en.class?.modality?.name).join(', '),
+      ...student,
+    }));
   }
 }

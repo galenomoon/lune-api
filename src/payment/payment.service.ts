@@ -52,6 +52,9 @@ export class PaymentService {
           gte: start,
           lte: end,
         },
+        NOT: {
+          status: 'CANCELED'
+        }
       },
     });
 

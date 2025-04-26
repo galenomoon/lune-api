@@ -190,7 +190,7 @@ export class GridItemsService {
 
     for (const item of gridItems) {
       const teacher = item.class?.teacher;
-      const enrollments = item.class?.enrollments.length ?? 0;
+      const enrollments = item.class?.enrollments.filter(e => e.status === "active").length ?? 0;
 
       const [startHour, startMin] = item.startTime.split(':').map(Number);
       const [endHour, endMin] = item.endTime.split(':').map(Number);
