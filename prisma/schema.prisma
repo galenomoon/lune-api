@@ -163,7 +163,7 @@ model Plan {
 //  ============ CRM ============
 
 model Lead {
-  id                 String       @id @default(cuid())
+  id                 String         @id @default(cuid())
   firstName          String
   lastName           String?
   phone              String?
@@ -176,39 +176,39 @@ model Lead {
   instagram          String?
   email              String?
   score              Int
-  status             Int          @default(0) // 0 - New, 1 - Contacted, 2 - Enrolled
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
-  TrialStudent         TrialStudent[]
+  status             Int            @default(0) // 0 - New, 1 - Contacted, 2 - Enrolled
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  TrialStudent       TrialStudent[]
 
   @@map("leads")
 }
 
 model TrialInvite {
-  id         String      @id @default(uuid())
-  token      String      @unique
-  usedAt     DateTime?
-  gridItemId String
-  gridItem   GridItem    @relation(fields: [gridItemId], references: [id])
-  validUntil DateTime
+  id           String        @id @default(uuid())
+  token        String        @unique
+  usedAt       DateTime?
+  gridItemId   String
+  gridItem     GridItem      @relation(fields: [gridItemId], references: [id])
+  validUntil   DateTime
   trialStudent TrialStudent?
-  createdAt  DateTime    @default(now())
+  createdAt    DateTime      @default(now())
 
   @@map("trial_invites")
 }
 
 model TrialStudent {
   id         String       @id @default(cuid())
-  lead       Lead         @relation(fields: [leadId], references: [id])
+  lead       Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
   gridItemId String
-  gridItem   GridItem     @relation(fields: [gridItemId], references: [id])
+  gridItem   GridItem     @relation(fields: [gridItemId], references: [id], onDelete: Cascade)
   date       DateTime
   inviteId   String?      @unique
-  invite     TrialInvite? @relation(fields: [inviteId], references: [id])
+  invite     TrialInvite? @relation(fields: [inviteId], references: [id], onDelete: Cascade)
   createdAt  DateTime     @default(now())
   leadId     String
 
-  @@map("trial_classes")
+  @@map("trial_students")
 }
 
 // ============ Teacher ============
@@ -235,16 +235,16 @@ model Teacher {
 // ============ GRID CLASSES ============
 
 model GridItem {
-  id           String        @id @default(cuid())
-  dayOfWeek    String
-  startTime    String
-  endTime      String
-  classId      String?
-  class        Class?        @relation(fields: [classId], references: [id])
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  trialStudentes TrialStudent[]
-  TrialInvite  TrialInvite[]
+  id             String         @id @default(cuid())
+  dayOfWeek      String
+  startTime      String
+  endTime        String
+  classId        String?
+  class          Class?         @relation(fields: [classId], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  trialStudents TrialStudent[]
+  TrialInvite    TrialInvite[]
 
   @@map("grid_items")
 }

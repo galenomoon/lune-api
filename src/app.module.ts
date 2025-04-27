@@ -20,6 +20,7 @@ import { join } from 'path';
 import { DBModule } from './db/db.module';
 import { MailModule } from './mail/mail.module';
 import { AddressesModule } from './addresses/addresses.module';
+import { TrialStudentsModule } from './trial-students/trial-students.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { AddressesModule } from './addresses/addresses.module';
       },
     }),
     AddressesModule,
+    TrialStudentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

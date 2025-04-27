@@ -1,7 +1,15 @@
-export class CreateGridItemDto {
-  id?: string
-  gridItems: GridItem[]
-  class: GridClass;
+import { CreateLeadDto } from 'src/lead/dto/create-lead.dto';
+
+export class CreateTrialStudentDto {
+  lead: CreateLeadDto;
+  gridItem: {
+    id?: string;
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+    class: GridClass;
+  };
+  date: Date;
 }
 
 class GridClass {
@@ -18,15 +26,9 @@ class GridClass {
   classLevel?: ClassLevel;
 }
 
-class GridItem {
-  dayOfWeek: string;
-  startTime: string;
-  endTime: string;
-}
 class Modality {
-  name: string
+  name: string;
 }
 class ClassLevel {}
 class Teacher {}
 class Enrollment {}
-

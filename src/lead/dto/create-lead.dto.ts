@@ -6,7 +6,7 @@ export class CreateLeadDto {
   obs?: string;
   modalityOfInterest: string;
   preferencePeriod: string;
-  age: number;
+  age?: number;
   city?: string;
   instagram?: string;
   score: number;
