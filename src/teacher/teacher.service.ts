@@ -58,6 +58,11 @@ export class TeacherService {
               enrollments: true,
             },
           },
+          trialStudents: {
+            include: {
+              lead: true,
+            },
+          },
         },
         orderBy: {
           startTime: 'asc',
@@ -66,7 +71,9 @@ export class TeacherService {
 
       // Filtro: só mantém aulas com ao menos 1 matrícula
       gridItems = fetchedItems.filter(
-        (item) => item.class && item.class.enrollments.length > 0,
+        (item) =>
+          (item.class && item.class.enrollments.length > 0) ||
+          item?.trialStudents?.length > 0,
       );
 
       // Se encontrou alguma, para
@@ -124,11 +131,18 @@ export class TeacherService {
             enrollments: true,
           },
         },
+        trialStudents: {
+          include: {
+            lead: true,
+          },
+        },
       },
     });
 
     const filteredGridItems = gridItems.filter(
-      (item) => item?.class && item.class.enrollments.length > 0,
+      (item) =>
+        (item?.class && item.class.enrollments.length > 0) ||
+        item?.trialStudents?.length > 0,
     );
 
     const weeklyGrouped: Record<
