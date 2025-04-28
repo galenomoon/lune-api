@@ -5,21 +5,21 @@ import { getDayLabel } from './getDayLabel';
 export function buildScheduleWithStatus(
   gridItems: any[],
   referenceDate: Date,
-  setFirstAsNext: boolean = false
+  setFirstAsNext: boolean = false,
 ): any[] {
   const classesWithStatus = gridItems.map((item) => {
     const [startHour, startMinute] = item.startTime.split(':').map(Number);
     const [endHour, endMinute] = item.endTime.split(':').map(Number);
 
-    const startDateTime = set(new Date(referenceDate), {
-      hours: startHour,
+    const startDateTime = set(referenceDate, {
+      hours: startHour - 3,
       minutes: startMinute,
       seconds: 0,
       milliseconds: 0,
     });
 
-    const endDateTime = set(new Date(referenceDate), {
-      hours: endHour,
+    const endDateTime = set(referenceDate, {
+      hours: endHour - 3,
       minutes: endMinute,
       seconds: 0,
       milliseconds: 0,
@@ -40,7 +40,7 @@ export function buildScheduleWithStatus(
   });
 
   const sorted = classesWithStatus.sort(
-    (a, b) => a.startDateTime.getTime() - b.startDateTime.getTime()
+    (a, b) => a.startDateTime.getTime() - b.startDateTime.getTime(),
   );
 
   let indexToMarkNext: number | null = null;
