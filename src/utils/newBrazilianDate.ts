@@ -1,8 +1,8 @@
 export function newBrazilianDate(): Date {
-  const brazilianTimeZone = 'America/Sao_Paulo';
   const now = new Date();
-  const brazilianDate = new Date(
-    now.toLocaleString('en-US', { timeZone: brazilianTimeZone }),
-  );
-  return brazilianDate;
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000; // volta para UTC
+  const brazilianOffset = -6; // Brasília = UTC-3
+  const brazilianTime = new Date(utc + 3600000 * brazilianOffset);
+
+  return brazilianTime;
 }
