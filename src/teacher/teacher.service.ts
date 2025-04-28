@@ -55,7 +55,11 @@ export class TeacherService {
             include: {
               modality: true,
               classLevel: true,
-              enrollments: true,
+              enrollments: {
+                include: {
+                  student: true,
+                },
+              },
             },
           },
           trialStudents: {
@@ -128,7 +132,11 @@ export class TeacherService {
           include: {
             modality: true,
             classLevel: true,
-            enrollments: true,
+            enrollments: {
+              include: {
+                student: true,
+              },
+            },
           },
         },
         trialStudents: {

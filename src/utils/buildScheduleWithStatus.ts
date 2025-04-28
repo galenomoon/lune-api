@@ -34,6 +34,10 @@ export function buildScheduleWithStatus(
       classLevel: item.class.classLevel.name,
       startTime: item.startTime,
       endTime: item.endTime,
+      trialStudents: item.trialStudents?.map((trial) => ({ ...trial?.lead })),
+      hasTrialStudents: item.trialStudents?.length,
+      enrollmentStudents: item.class.enrollments.map((enrollment) => ({ ...enrollment?.student })),
+      hasEnrollmentStudents: item?.class?.enrollments?.length,
       startDateTime,
       dayLabel: getDayLabel(referenceDate),
     };
