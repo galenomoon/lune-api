@@ -220,6 +220,8 @@ model Teacher {
   birthDate DateTime
   cpf       String   @unique
   rg        String   @unique
+  pixKey    String?
+  imageUrl  String?
   phone     String?
   email     String?
   instagram String?
@@ -235,16 +237,16 @@ model Teacher {
 // ============ GRID CLASSES ============
 
 model GridItem {
-  id             String         @id @default(cuid())
-  dayOfWeek      String
-  startTime      String
-  endTime        String
-  classId        String?
-  class          Class?         @relation(fields: [classId], references: [id])
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id            String         @id @default(cuid())
+  dayOfWeek     String
+  startTime     String
+  endTime       String
+  classId       String?
+  class         Class?         @relation(fields: [classId], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   trialStudents TrialStudent[]
-  TrialInvite    TrialInvite[]
+  TrialInvite   TrialInvite[]
 
   @@map("grid_items")
 }

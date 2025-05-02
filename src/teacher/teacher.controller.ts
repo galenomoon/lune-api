@@ -61,15 +61,12 @@ export class TeacherController {
     return await this.teacherService.getWeeklySchedule(req.user.id, weekDate);
   }
 
-  
-
   @UseGuards(AuthGuard)
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return await this.teacherService.findOne(id);
   }
 
-  @UseGuards(AuthGuard)
   @Patch(':id')
   async update(
     @Param('id') id: string,
