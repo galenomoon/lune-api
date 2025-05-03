@@ -215,7 +215,7 @@ export class StudentsService {
       const payments = createPayments({
         enrollment: newEnrollment,
         plan: { ...planData, durationInDays },
-        enrollmentTax: 50,
+        enrollmentTax: 0,
       });
 
       await prisma.payment.createMany({ data: payments });

@@ -11,7 +11,7 @@ export const createPayments = ({ enrollment, plan, enrollmentTax = 100 }) => {
   let payments = [] as CreatePaymentDto[];
 
   let firstPaymentDate = new Date(startDate);
-  firstPaymentDate.setDate(+paymentDay - 1);
+  firstPaymentDate.setDate(+paymentDay);
 
   if (
     firstPaymentDate < startDate ||
@@ -36,7 +36,7 @@ export const createPayments = ({ enrollment, plan, enrollmentTax = 100 }) => {
     if (paymentDay > lastDayOfMonth) {
       dueDate.setDate(lastDayOfMonth);
     } else {
-      dueDate.setDate(paymentDay - 1);
+      dueDate.setDate(paymentDay);
     }
 
     const brDueDate = addHours(dueDate);
