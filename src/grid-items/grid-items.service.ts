@@ -120,12 +120,20 @@ export class GridItemsService {
         },
       },
       include: {
-        trialStudents: true,
+        trialStudents: {
+          include: {
+            lead: true
+          }
+        },
         class: {
           include: {
             modality: true,
             classLevel: true,
-            enrollments: true,
+            enrollments: {
+              include: {
+                student: true
+              }
+            },
             teacher: true,
           },
         },
@@ -160,7 +168,9 @@ export class GridItemsService {
         id: item.id,
         maxStudents: item.class?.maxStudents,
         enrolledStudents: item.class?.enrollments.length,
+        enrolledStudentsList: item.class?.enrollments,
         trialStudents: item?.trialStudents?.length,
+        trialStudentsList: item?.trialStudents,
         modality: item.class?.modality.name,
         startTime: item.startTime,
         endTime: item.endTime,
