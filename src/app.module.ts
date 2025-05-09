@@ -21,6 +21,8 @@ import { DBModule } from './db/db.module';
 import { MailModule } from './mail/mail.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { TrialStudentsModule } from './trial-students/trial-students.module';
+import { WorkedHoursModule } from './worked-hours/worked-hours.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -39,6 +41,7 @@ import { TrialStudentsModule } from './trial-students/trial-students.module';
     ContractModule,
     DBModule,
     MailModule,
+    ScheduleModule.forRoot(),
     MailerModule.forRoot({
       transport: {
         service: 'gmail',
@@ -60,6 +63,7 @@ import { TrialStudentsModule } from './trial-students/trial-students.module';
     }),
     AddressesModule,
     TrialStudentsModule,
+    WorkedHoursModule,
   ],
   controllers: [AppController],
   providers: [AppService],

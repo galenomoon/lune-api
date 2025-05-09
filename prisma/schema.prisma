@@ -214,22 +214,23 @@ model TrialStudent {
 // ============ Teacher ============
 
 model Teacher {
-  id        String   @id @default(cuid())
-  firstName String
-  lastName  String
-  birthDate DateTime
-  cpf       String   @unique
-  rg        String   @unique
-  pixKey    String?
-  imageUrl  String?
-  phone     String?
-  email     String?
-  instagram String?
-  priceHour Float
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  classes   Class[]
-  password  String?
+  id         String       @id @default(cuid())
+  firstName  String
+  lastName   String
+  birthDate  DateTime
+  cpf        String       @unique
+  rg         String       @unique
+  pixKey     String?
+  imageUrl   String?
+  phone      String?
+  email      String?
+  instagram  String?
+  priceHour  Float
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  classes    Class[]
+  password   String?
+  WorkedHour WorkedHour[]
 
   @@map("teachers")
 }
@@ -268,6 +269,7 @@ model Class {
   classLevel   ClassLevel   @relation(fields: [classLevelId], references: [id])
   gridClasses  GridItem[]
   teacherId    String?
+  WorkedHour   WorkedHour[]
 
   @@map("classes")
 }
@@ -292,4 +294,30 @@ model ClassLevel {
   classes   Class[]
 
   @@map("class_levels")
+}
+
+model WorkedHour {
+  id            String           @id @default(cuid())
+  teacherId     String
+  teacher       Teacher          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classId       String
+  class         Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  workedAt      DateTime // Data em que o trabalho foi registrado
+  startedAt     DateTime // Data em que o trabalho foi executado
+  endedAt       DateTime // Data em que o trabalho foi finalizado
+  duration      Int // Duração em minutos
+  priceSnapshot Float // Valor da hora do professor no momento do registro
+  status        WorkedHourStatus
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@map("worked_hours")
+}
+
+enum WorkedHourStatus {
+  PENDING
+  DONE
+  APPROVED
+  REJECTED
+  CANCELED
 }
