@@ -110,9 +110,7 @@ export class GridItemsService {
       orderBy: { startTime: 'asc' },
       where: {
         class: {
-          modality: {
-            name: name ? { contains: name, mode: 'insensitive' } : undefined,
-          },
+          modality: { name: name ? { contains: name, mode: 'insensitive' } : undefined },
           teacherId: teacherId ? { equals: teacherId } : undefined,
           description: ageRange ? { equals: ageRange } : undefined,
           modalityId: modalityId ? { equals: modalityId } : undefined,
@@ -150,6 +148,10 @@ export class GridItemsService {
         return firstItem !== undefined;
       });
 
+      const filteredEnrollments = item.class?.enrollments.filter(
+        (enrollment) => enrollment.status === 'active',
+      );
+
       if (!existingBlock) {
         existingBlock = {
           sunday: {},
@@ -167,8 +169,8 @@ export class GridItemsService {
         ...item,
         id: item.id,
         maxStudents: item.class?.maxStudents,
-        enrolledStudents: item.class?.enrollments.length,
-        enrolledStudentsList: item.class?.enrollments,
+        enrolledStudents: filteredEnrollments?.length,
+        enrolledStudentsList: filteredEnrollments,
         trialStudents: item?.trialStudents?.length,
         trialStudentsList: item?.trialStudents,
         modality: item.class?.modality.name,

@@ -3,11 +3,10 @@ import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { UpdateEnrollmentDto } from './dto/update-enrollment.dto';
 import { PrismaService } from 'src/config/prisma.service';
 import { CreateStudentDto } from 'src/students/dto/create-student.dto';
-import { CreatePaymentDto } from 'src/payment/dto/create-payment.dto';
-import { planDetailsIndexedByDurationInDays } from 'src/constants';
 import { createPayments } from 'src/utils/createPayments';
 import { getDateRangeByPlanDurationInDays } from 'src/utils/getDateRangeByPlanDurationInDays';
 import { MailService } from 'src/mail/mail.service';
+import { newBrazilianDate } from 'src/utils/newBrazilianDate';
 
 @Injectable()
 export class EnrollmentService {
@@ -103,6 +102,7 @@ export class EnrollmentService {
 
   async renew(enrollmentId: string, planId: string) {
     return this.prisma.$transaction(async (prisma) => {
+
       // ========== VERIFICAR MATRÍCULA ATUAL ==========
       const currentEnrollment = await prisma.enrollment.findFirst({
         where: { id: enrollmentId, status: 'active' },
@@ -123,15 +123,13 @@ export class EnrollmentService {
       // ========== RECUPERAR DADOS DO NOVO PLANO ==========
       const planData = await prisma.plan.findFirst({ where: { id: planId } });
       if (!planData) throw new Error('Plan not found');
-
-      const { durationInDays, price } = planData;
-      const monthsQuantity =
-        planDetailsIndexedByDurationInDays[durationInDays as number].monthsQuantity;
+      const { durationInDays } = planData;
 
       // ========== CRIAR NOVA MATRÍCULA ==========
-      const startDate = new Date();
-      let endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + monthsQuantity);
+       const { startDate, endDate } = getDateRangeByPlanDurationInDays({
+        startDate: newBrazilianDate(),
+        durationInDays,
+      });
 
       const newEnrollment = await prisma.enrollment.create({
         data: {
@@ -145,43 +143,22 @@ export class EnrollmentService {
         },
       });
 
+      // ========== ARQUIVAR MATRÍCULA ANTIGA ==========
       await prisma.enrollment.update({
         where: { id: currentEnrollment.id },
         data: { status: 'archived' },
       });
 
-      // ========== GERAR NOVOS PAGAMENTOS ==========
-      let payments = [] as CreatePaymentDto[];
-      let firstPaymentDate = new Date(startDate);
-      firstPaymentDate.setDate(currentEnrollment.paymentDay - 1);
-
-      if (firstPaymentDate < startDate) {
-        firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
-      }
-
-      for (let i = 0; i < monthsQuantity; i++) {
-        let dueDate = new Date(firstPaymentDate);
-        dueDate.setMonth(dueDate.getMonth() + i);
-
-        let lastDayOfMonth = new Date(
-          dueDate.getFullYear(),
-          dueDate.getMonth() + 1,
-          0,
-        ).getDate();
-
-        if (currentEnrollment.paymentDay > lastDayOfMonth) {
-          dueDate.setDate(lastDayOfMonth);
-        } else {
-          dueDate.setDate(currentEnrollment.paymentDay - 1);
-        }
-
-        payments.push({
-          enrollmentId: newEnrollment.id,
-          amount: price,
-          dueDate,
-          status: 'PENDING',
-        });
-      }
+      // ========== CRIAR PAGAMENTOS ==========
+      const payments = createPayments({
+        enrollment: {
+          id: newEnrollment.id,
+          startDate,
+          paymentDay: currentEnrollment.paymentDay,
+        },
+        plan: planData,
+        enrollmentTax: 0, 
+      });
 
       await prisma.payment.createMany({ data: payments });
 
