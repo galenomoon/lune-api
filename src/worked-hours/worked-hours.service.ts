@@ -9,7 +9,7 @@ import { CreateWorkedHourDto } from './dto/create-worked-hour.dto';
 export class WorkedHoursService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  @Cron(CronExpression.EVERY_10_SECONDS, {
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
     timeZone: 'America/Sao_Paulo',
   })
   async createBatch() {
