@@ -1,5 +1,4 @@
 export class CreateWorkedHourDto {
-  id: string;
   teacherId: string;
   classId: string;
   workedAt: Date;
