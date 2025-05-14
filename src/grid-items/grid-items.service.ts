@@ -167,6 +167,10 @@ export class GridItemsService {
 
       existingBlock[item.dayOfWeek.toLowerCase()] = {
         ...item,
+        class: {
+          ...item.class,
+          enrollments: filteredEnrollments,
+        },
         id: item.id,
         maxStudents: item.class?.maxStudents,
         enrolledStudents: filteredEnrollments?.length,
