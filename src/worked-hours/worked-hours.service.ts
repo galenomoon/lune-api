@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { UpdateWorkedHourDto } from './dto/update-worked-hour.dto';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../config/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WorkedHourStatus } from '@prisma/client';
 import { CreateWorkedHourDto } from './dto/create-worked-hour.dto';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 @Injectable()
 export class WorkedHoursService {
@@ -109,10 +109,20 @@ export class WorkedHoursService {
     });
   }
 
-  async findAll() {
-    const workedHours = await this.prismaService.teacher.findMany({
+  async findAll(month: string) {
+    const date = new Date(month);
+    const startDate = startOfMonth(date);
+    const endDate = endOfMonth(date);
+
+    const teachers = await this.prismaService.teacher.findMany({
       include: {
         WorkedHour: {
+          where: {
+            workedAt: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
           include: {
             class: true,
           },
@@ -120,36 +130,100 @@ export class WorkedHoursService {
       },
     });
 
-    return workedHours;
+    // Agrega total de horas
+    return teachers.map((teacher) => {
+      const totalMinutes = teacher.WorkedHour.reduce(
+        (sum, wh) => sum + wh.duration,
+        0,
+      );
+      const totalHours = totalMinutes / 60;
+
+      return {
+        ...teacher,
+        totalHours,
+        workedDetails: teacher.WorkedHour,
+      };
+    });
   }
 
-  async findOne(id: string) {
-    return await this.prismaService.workedHour.findUnique({
+  async findOne(
+    id: string,
+    month: string, // "YYYY-MM"
+  ) {
+    const date = new Date(month);
+    const startDate = startOfMonth(date);
+    const endDate = endOfMonth(date);
+
+    const teacher = await this.prismaService.teacher.findUnique({
       where: {
         id,
       },
       include: {
-        class: true,
-        teacher: true,
+        WorkedHour: {
+          where: {
+            workedAt: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
+          include: {
+            class: true,
+          },
+        },
       },
     });
+
+    if (!teacher) return null;
+
+    const totalMinutes = teacher.WorkedHour.reduce(
+      (sum, wh) => sum + wh.duration,
+      0,
+    );
+    const totalHours = totalMinutes / 60;
+
+    return {
+      ...teacher,
+      totalHours,
+      workedDetails: teacher.WorkedHour,
+    };
   }
 
-  async update(id: string, updateWorkedHourDto: UpdateWorkedHourDto) {
+  async updateStatus(
+    id: string,
+    updateWorkedHourStatus: WorkedHourStatus,
+    userId: string,
+  ) {
+    const user = await this.prismaService.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    const teacher = await this.prismaService.teacher.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    // se n for admin
+    if (!user) {
+      const workedHour = await this.prismaService.workedHour.findUnique({
+        where: {
+          id,
+        },
+      });
+      // se for professor e n for dono daquela worked hour
+      if (workedHour?.teacherId !== teacher?.id) {
+        return new ForbiddenException('No authorized');
+      }
+    }
+
     return await this.prismaService.workedHour.update({
       where: {
         id,
       },
       data: {
-        ...updateWorkedHourDto,
-      },
-    });
-  }
-
-  async remove(id: string) {
-    return await this.prismaService.workedHour.delete({
-      where: {
-        id,
+        status: updateWorkedHourStatus,
       },
     });
   }
