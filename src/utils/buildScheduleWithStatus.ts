@@ -27,6 +27,10 @@ export function buildScheduleWithStatus(
 
     const status = calculateClassStatus(startDateTime, endDateTime);
 
+    const filteredEnrollments = item?.class?.enrollments.filter(
+      (e) => e.status === 'active',
+    ) || [];
+    
     return {
       id: item.id,
       status,
@@ -36,8 +40,8 @@ export function buildScheduleWithStatus(
       endTime: item.endTime,
       trialStudents: item.trialStudents?.map((trial) => ({ ...trial?.lead })),
       hasTrialStudents: item.trialStudents?.length,
-      enrollmentStudents: item.class.enrollments.map((enrollment) => ({ ...enrollment?.student })),
-      hasEnrollmentStudents: item?.class?.enrollments?.length,
+      enrollmentStudents: filteredEnrollments.map((enrollment) => ({ ...enrollment?.student })),
+      hasEnrollmentStudents: filteredEnrollments?.length,
       startDateTime,
       dayLabel: getDayLabel(referenceDate),
     };
