@@ -148,9 +148,17 @@ export class TeacherService {
     });
 
     const filteredGridItems = gridItems.filter(
-      (item) =>
-        (item?.class && item.class.enrollments.length > 0) ||
-        item?.trialStudents?.length > 0,
+      (item) => {
+        const hasSomeEnrollment = (item?.class && item.class.enrollments.length > 0)
+        const hasSomeTrialClass = item?.trialStudents?.length > 0
+        const hasSomeActiveEnrollment = item?.class && item?.class?.enrollments?.some(e => e.status === 'active')
+
+        if (hasSomeTrialClass) return true
+
+        if (hasSomeEnrollment && hasSomeActiveEnrollment) return true
+
+        return false
+      }
     );
 
     const weeklyGrouped: Record<
