@@ -28,6 +28,7 @@ export class PaymentService {
                 firstName: true,
                 lastName: true,
                 cpf: true,
+                phone: true
               },
             },
             class: {
