@@ -1,4 +1,8 @@
 export const planDetailsIndexedByDurationInDays = {
+  0: {
+    monthsQuantity: 1,
+    name: 'Mensal',
+  },
   30: {
     monthsQuantity: 1,
     name: 'Mensal',

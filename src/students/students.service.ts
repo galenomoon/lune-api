@@ -5,6 +5,7 @@ import { calculateTimeUntil } from 'src/utils/calculateTimeUntil';
 import { planDetailsIndexedByDurationInDays } from 'src/constants';
 import { getDateRangeByPlanDurationInDays } from 'src/utils/getDateRangeByPlanDurationInDays';
 import { createPayments } from 'src/utils/createPayments';
+import { newBrazilianDate } from 'src/utils/newBrazilianDate';
 
 @Injectable()
 export class StudentsService {
@@ -79,6 +80,19 @@ export class StudentsService {
           nextPayment = mostCanceledPaymentDate;
         }
 
+        if (enrollment.status === 'canceled') {
+          paymentStatus = 'CANCELED';
+          nextPayment = {
+            id: '',
+            createdAt: newBrazilianDate(),
+            updatedAt: newBrazilianDate(),
+            status: 'CANCELED',
+            enrollmentId: enrollment.id,
+            amount: 0,
+            dueDate: newBrazilianDate(),
+          }
+        }
+
         paymentId = nextPayment?.id;
 
         const [year, month, day] =
@@ -137,7 +151,6 @@ export class StudentsService {
         enrollments.filter(
           (enrollment) => enrollment!.paymentStatus === 'CANCELED',
         ).length === enrollments.length;
-
       return {
         id: student.id,
         studentName: [student.firstName, student.lastName]
