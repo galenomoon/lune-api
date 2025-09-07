@@ -110,7 +110,18 @@ export class PaymentService {
         },
       },
     });
-
+    const trialClasses = await this.prisma.gridItem.findMany({
+      where: {
+        trialStudents: {
+          some: {
+            date: {
+              gte: start,
+              lte: end,
+            }
+          }
+        }
+      }
+    });
 
     const totalToReceive = paymentsThisMonth.filter((p) => p.status === 'PENDING').reduce(
       (sum, p) => sum + p.amount,
@@ -131,6 +142,7 @@ export class PaymentService {
       totalReceived,
       classes,
       activeEnrollments: activeEnrollments.length,
+      trialClasses: trialClasses.length,
       month: formatted,
     };
   }
