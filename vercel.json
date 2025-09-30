@@ -8,11 +8,15 @@
   ],
   "routes": [
     {
+      "src": "/",
+      "dest": "/api/v1/health"
+    },
+    {
       "src": "/(.*)",
       "dest": "dist/main.js"
     }
   ],
   "env": {
-    "PRISMA_CLI_BINARY_TARGETS": "rhel-openssl-1.0.x"
+    "PRISMA_CLI_BINARY_TARGETS": "rhel-openssl-1.0.x,linux-musl-openssl-3.0.x"
   }
 }
