@@ -6,6 +6,7 @@ import { getTimePeriod } from 'src/utils/getTimePeriod';
 import { LEAD_SCORES_NUMBERS, LEAD_STATUS_NUMBERS } from 'src/constants';
 import { ptBR } from 'date-fns/locale';
 import { format } from 'date-fns';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class TrialStudentsService {
@@ -33,7 +34,7 @@ export class TrialStudentsService {
       const newLead = await prisma.lead.create({
         data: {
           ...lead,
-          modalityOfInterest: currentGridItem!.class!.modality.name,
+          modalityOfInterest: currentGridItem.class!.modality.name,
           preferencePeriod: getTimePeriod(currentGridItem.startTime),
           score: LEAD_SCORES_NUMBERS.trialClass,
           status: LEAD_STATUS_NUMBERS.newLead,
@@ -65,6 +66,7 @@ export class TrialStudentsService {
               include: {
                 modality: true,
                 classLevel: true,
+                teacher: true,
               },
             },
           },
@@ -89,7 +91,14 @@ export class TrialStudentsService {
     if (!nearestDate) {
       return {
         nearestTrialClasses: null,
-        list: trialStudents,
+        list: trialStudents.map((item) => ({
+          ...item,
+          ...item.lead,
+          ...item.gridItem,
+          teacherName: item.gridItem.class!.teacher!.firstName || '',
+          id: item.id,
+          trialStatus: item.status as string,
+        })),
       };
     }
 
@@ -112,8 +121,8 @@ export class TrialStudentsService {
 
       if (!groupedByGridItem[gridItemId]) {
         groupedByGridItem[gridItemId] = {
-          modality: trial!.gridItem!.class!.modality.name,
-          classLevel: trial!.gridItem!.class!.classLevel?.name || '',
+          modality: trial.gridItem.class!.modality.name,
+          classLevel: trial.gridItem.class!.classLevel?.name || '',
           startTime: trial.gridItem.startTime,
           endTime: trial.gridItem.endTime,
           trialStudents: [],
@@ -150,15 +159,20 @@ export class TrialStudentsService {
 
       // Filtra as aulas para cada dia da semana
       trialStudents.forEach((trial) => {
-        const trialDay = trial.gridItem.dayOfWeek
-        const gridItemLabel = `${trial!.gridItem!.class!.modality!.name}@${trial!.gridItem!.class!.classLevel?.name || ''} ${trial!.gridItem!.class!.description || ''} | ${trial!.gridItem!.startTime || ''} - ${trial!.gridItem!.endTime || ''}`;
+        const trialDay = trial.gridItem.dayOfWeek;
+        const gridItemLabel = `${trial.gridItem.class!.modality.name}@${trial.gridItem.class!.classLevel?.name || ''} ${trial.gridItem.class!.description || ''} | ${trial.gridItem.startTime || ''} - ${trial.gridItem.endTime || ''}`;
 
         if (trialDay === day) {
           if (!weekResume[day][gridItemLabel]) {
             weekResume[day][gridItemLabel] = [];
           }
-          
-          weekResume[day][gridItemLabel].push({trial, ...trial.lead});
+
+          weekResume[day][gridItemLabel].push({
+            trial,
+            ...trial.lead,
+            teacherName: trial.gridItem.class!.teacher!.firstName || '',
+            trialStatus: trial.status as string,
+          });
         }
       });
     });
@@ -173,9 +187,11 @@ export class TrialStudentsService {
         ...item,
         ...item.lead,
         ...item.gridItem,
+        teacherName: item.gridItem.class!.teacher!.firstName || '',
         id: item.id,
+        trialStatus: item.status as string,
       })),
-      weekResume
+      weekResume,
     };
   }
 
@@ -217,6 +233,19 @@ export class TrialStudentsService {
 
     const { lead, gridItem, date } = updateTrialStudentDto;
 
+    // Verificar se a data foi alterada e se é uma data futura
+    let newStatus: string | undefined = undefined;
+    if (date) {
+      const newDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Se a nova data for maior que hoje, voltar status para SCHEDULED
+      if (newDate > today) {
+        newStatus = 'SCHEDULED';
+      }
+    }
+
     await this.prisma.$transaction(async (prisma) => {
       if (lead) {
         await prisma.lead.update({
@@ -228,8 +257,16 @@ export class TrialStudentsService {
       await prisma.trialStudent.update({
         where: { id },
         data: {
-          ...(gridItem?.id && { gridItemId: gridItem?.id }),
+          ...(gridItem?.id && { gridItemId: gridItem.id }),
           ...(date && { date }),
+          ...(newStatus && {
+            status: newStatus as
+              | 'SCHEDULED'
+              | 'PENDING_STATUS'
+              | 'CONVERTED'
+              | 'NOT_CONVERTED'
+              | 'CANCELLED',
+          }),
         },
       });
     });
@@ -247,5 +284,137 @@ export class TrialStudentsService {
     return await this.prisma.trialStudent.delete({
       where: { id },
     });
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+    timeZone: 'America/Sao_Paulo',
+  })
+  async updatePastTrialStudentsStatus() {
+    const dateAmericaSP = new Date(
+      new Date().toLocaleString('en-US', {
+        timeZone: 'America/Sao_Paulo',
+      }),
+    );
+
+    // Busca todas as aulas experimentais que já passaram da data e ainda estão com status SCHEDULED
+    const pastTrialStudents = await this.prisma.trialStudent.findMany({
+      where: {
+        date: {
+          lt: dateAmericaSP, // Menor que a data atual (já passou)
+        },
+        status: 'SCHEDULED', // Apenas as que ainda estão agendadas
+      },
+      include: {
+        lead: true,
+        gridItem: {
+          include: {
+            class: {
+              include: {
+                modality: true,
+                classLevel: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (pastTrialStudents.length === 0) {
+      console.log(
+        'Nenhuma aula experimental passada encontrada para atualizar status',
+      );
+      return;
+    }
+
+    // Atualiza o status de todas as aulas passadas para PENDING_STATUS
+    const updateResult = await this.prisma.trialStudent.updateMany({
+      where: {
+        id: {
+          in: pastTrialStudents.map((ts) => ts.id),
+        },
+      },
+      data: {
+        status: 'PENDING_STATUS',
+        updatedAt: new Date(),
+      },
+    });
+
+    console.log(
+      `Atualizadas ${updateResult.count} aulas experimentais para status PENDING_STATUS`,
+      pastTrialStudents.map((ts) => ts),
+    );
+
+    return updateResult;
+  }
+
+  // ============ V2 METHODS ============
+
+  async findPendingStatus() {
+    const pendingTrialStudents = await this.prisma.trialStudent.findMany({
+      where: {
+        status: 'PENDING_STATUS',
+      },
+      include: {
+        lead: true,
+        gridItem: {
+          include: {
+            class: {
+              include: {
+                modality: true,
+                classLevel: true,
+                teacher: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        date: 'asc',
+      },
+    });
+
+    return {
+      count: pendingTrialStudents.length,
+      data: pendingTrialStudents,
+    };
+  }
+
+  async updateStatus(id: string, status: string) {
+    // Validar se o status é válido
+    const validStatuses = ['CONVERTED', 'NOT_CONVERTED', 'CANCELLED'];
+    if (!validStatuses.includes(status)) {
+      throw new Error('Status inválido');
+    }
+
+    return await this.prisma.$transaction(async (prisma) => {
+      const updatedTrialStudent = await prisma.trialStudent.update({
+        where: { id },
+        data: {
+          status: status as 'CONVERTED' | 'NOT_CONVERTED' | 'CANCELLED',
+          updatedAt: new Date(),
+        },
+        include: {
+          lead: true,
+          gridItem: {
+            include: {
+              class: {
+                include: {
+                  modality: true,
+                  classLevel: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return updatedTrialStudent;
+    });
+  }
+
+  // ============ TEST METHODS ============
+
+  async testUpdatePastTrialStudentsStatus() {
+    return await this.updatePastTrialStudentsStatus();
   }
 }

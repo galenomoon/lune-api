@@ -73,9 +73,31 @@ export class EnrollmentService {
       const payments = createPayments({
         enrollment: createdEnrollment,
         plan: planData,
+        enrollmentTax: 0,
       });
 
-      await prisma.payment.createMany({ data: payments });
+      // Para planos mensais, gerar pagamento do mês atual e próximo
+      if (durationInDays === 30) {
+        const currentMonthPayment = {
+          enrollmentId: createdEnrollment.id,
+          amount: planData.price,
+          dueDate: newBrazilianDate(),
+          status: 'PENDING' as const,
+        };
+        
+        const nextMonthPayment = {
+          enrollmentId: createdEnrollment.id,
+          amount: planData.price,
+          dueDate: new Date(newBrazilianDate().setMonth(newBrazilianDate().getMonth() + 1)),
+          status: 'PENDING' as const,
+        };
+
+        await prisma.payment.createMany({ 
+          data: [currentMonthPayment, nextMonthPayment] 
+        });
+      } else {
+        await prisma.payment.createMany({ data: payments });
+      }
 
       // if (student?.email) {
       //   this.mail.sendContract({
@@ -160,7 +182,28 @@ export class EnrollmentService {
         enrollmentTax: 0, 
       });
 
-      await prisma.payment.createMany({ data: payments });
+      // Para planos mensais, gerar pagamento do mês atual e próximo
+      if (durationInDays === 30) {
+        const currentMonthPayment = {
+          enrollmentId: newEnrollment.id,
+          amount: planData.price,
+          dueDate: newBrazilianDate(),
+          status: 'PENDING' as const,
+        };
+        
+        const nextMonthPayment = {
+          enrollmentId: newEnrollment.id,
+          amount: planData.price,
+          dueDate: new Date(newBrazilianDate().setMonth(newBrazilianDate().getMonth() + 1)),
+          status: 'PENDING' as const,
+        };
+
+        await prisma.payment.createMany({ 
+          data: [currentMonthPayment, nextMonthPayment] 
+        });
+      } else {
+        await prisma.payment.createMany({ data: payments });
+      }
 
       return newEnrollment;
     });

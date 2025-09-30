@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,8 +6,6 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-// ============ User ✅ ============
 
 model User {
   id        String   @id @default(cuid())
@@ -26,8 +18,6 @@ model User {
   @@map("users")
 }
 
-// ============ Student ============
-
 model Student {
   id                String             @id @default(cuid())
   firstName         String
@@ -38,14 +28,14 @@ model Student {
   phone             String?
   instagram         String?
   email             String?
-  obs               String?
   password          String
-  addresses         Address[]
-  emergencyContacts EmergencyContact[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
-  medicalRecord     MedicalRecord[]
+  obs               String?
+  addresses         Address[]
+  emergencyContacts EmergencyContact[]
   enrollments       Enrollment[]
+  medicalRecord     MedicalRecord[]
 
   @@map("students")
 }
@@ -54,19 +44,19 @@ model Enrollment {
   id                String             @id @default(cuid())
   startDate         DateTime
   endDate           DateTime
-  status            String // 'active', 'canceled', 'pending', 'archived'
+  status            String
   studentId         String
-  student           Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
   planId            String
-  plan              Plan               @relation(fields: [planId], references: [id], onDelete: Cascade)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   paymentDay        Int
-  class             Class?             @relation(fields: [classId], references: [id])
   classId           String?
-  payments          Payment[]
   signature         String?
   contractSignToken ContractSignToken?
+  class             Class?             @relation(fields: [classId], references: [id])
+  plan              Plan               @relation(fields: [planId], references: [id])
+  student           Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  payments          Payment[]
 
   @@map("enrollments")
 }
@@ -76,27 +66,21 @@ model ContractSignToken {
   enrollmentId String     @unique
   token        String     @unique
   validUntil   DateTime
-  usedAt       DateTime? // Nulo até o token ser usado
+  usedAt       DateTime?
   enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 }
 
 model Payment {
   id           String        @id @default(cuid())
   enrollmentId String
-  enrollment   Enrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   amount       Float
-  dueDate      DateTime // Data em que o pagamento deveria ser feito
+  dueDate      DateTime
   status       PaymentStatus
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  enrollment   Enrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
   @@map("payments")
-}
-
-enum PaymentStatus {
-  PENDING // Pagamento pendente
-  PAID // Pagamento concluído
-  CANCELED // Pagamento cancelado
 }
 
 model MedicalRecord {
@@ -132,12 +116,12 @@ model Address {
 
 model EmergencyContact {
   id          String   @id @default(cuid())
-  name        String
-  description String?
   phone       String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   studentId   String
+  description String?
+  name        String
   student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, phone])
@@ -147,20 +131,18 @@ model EmergencyContact {
 model Plan {
   id             String       @id @default(cuid())
   name           String
-  weeklyClasses  Int?
   description    String?
-  durationInDays Int?
-  isSecondary    Boolean?
   price          Float
-  status         Boolean      @default(true) // true = ativo, false = inativo
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  weeklyClasses  Int?
+  durationInDays Int?
+  status         Boolean      @default(true)
+  isSecondary    Boolean?
   enrollments    Enrollment[]
 
   @@map("plans")
 }
-
-//  ============ CRM ============
 
 model Lead {
   id                 String         @id @default(cuid())
@@ -173,12 +155,12 @@ model Lead {
   preferencePeriod   String?
   age                Int?
   city               String?
-  instagram          String?
   email              String?
   score              Int
-  status             Int            @default(0) // 0 - New, 1 - Contacted, 2 - Enrolled
+  status             Int            @default(0)
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
+  instagram          String?
   TrialStudent       TrialStudent[]
 
   @@map("leads")
@@ -198,20 +180,20 @@ model TrialInvite {
 }
 
 model TrialStudent {
-  id         String       @id @default(cuid())
-  lead       Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  id         String                @id @default(cuid())
   gridItemId String
-  gridItem   GridItem     @relation(fields: [gridItemId], references: [id], onDelete: Cascade)
   date       DateTime
-  inviteId   String?      @unique
-  invite     TrialInvite? @relation(fields: [inviteId], references: [id], onDelete: Cascade)
-  createdAt  DateTime     @default(now())
+  inviteId   String?               @unique
+  status     TrialStudentStatus    @default(SCHEDULED)
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @default(now()) @updatedAt
   leadId     String
+  gridItem   GridItem              @relation(fields: [gridItemId], references: [id], onDelete: Cascade)
+  invite     TrialInvite?          @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  lead       Lead                  @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@map("trial_students")
 }
-
-// ============ Teacher ============
 
 model Teacher {
   id         String       @id @default(cuid())
@@ -220,22 +202,20 @@ model Teacher {
   birthDate  DateTime
   cpf        String       @unique
   rg         String       @unique
-  pixKey     String?
-  imageUrl   String?
   phone      String?
   email      String?
   instagram  String?
   priceHour  Float
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
+  password   String?      @default("defaultPassword")
+  imageUrl   String?
+  pixKey     String?
   classes    Class[]
-  password   String?
   WorkedHour WorkedHour[]
 
   @@map("teachers")
 }
-
-// ============ GRID CLASSES ============
 
 model GridItem {
   id            String         @id @default(cuid())
@@ -243,38 +223,35 @@ model GridItem {
   startTime     String
   endTime       String
   classId       String?
-  class         Class?         @relation(fields: [classId], references: [id])
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  class         Class?         @relation(fields: [classId], references: [id])
   trialStudents TrialStudent[]
   TrialInvite   TrialInvite[]
 
   @@map("grid_items")
 }
 
-// ============ CLASS ============
-//OK
 model Class {
   id           String       @id @default(cuid())
   name         String
   description  String?
   modalityId   String
-  modality     Modality     @relation(fields: [modalityId], references: [id])
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-  teacher      Teacher?     @relation(fields: [teacherId], references: [id])
-  enrollments  Enrollment[]
   classLevelId String
   maxStudents  Int
-  classLevel   ClassLevel   @relation(fields: [classLevelId], references: [id])
-  gridClasses  GridItem[]
   teacherId    String?
+  classLevel   ClassLevel   @relation(fields: [classLevelId], references: [id])
+  modality     Modality     @relation(fields: [modalityId], references: [id])
+  teacher      Teacher?     @relation(fields: [teacherId], references: [id])
+  enrollments  Enrollment[]
+  gridClasses  GridItem[]
   WorkedHour   WorkedHour[]
 
   @@map("classes")
 }
 
-//OK
 model Modality {
   id        String   @id @default(cuid())
   name      String
@@ -285,7 +262,6 @@ model Modality {
   @@map("modalities")
 }
 
-//OK
 model ClassLevel {
   id        String   @id @default(cuid())
   name      String
@@ -299,19 +275,26 @@ model ClassLevel {
 model WorkedHour {
   id            String           @id @default(cuid())
   teacherId     String
-  teacher       Teacher          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   classId       String
-  class         Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
-  workedAt      DateTime // Data em que o trabalho foi registrado
-  startedAt     DateTime // Data em que o trabalho foi executado
-  endedAt       DateTime // Data em que o trabalho foi finalizado
-  duration      Int // Duração em minutos
-  priceSnapshot Float // Valor da hora do professor no momento do registro
+  workedAt      DateTime
+  startedAt     DateTime
+  endedAt       DateTime
+  duration      Int
+  priceSnapshot Float
   status        WorkedHourStatus
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+  class         Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher       Teacher          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@map("worked_hours")
+}
+
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELED
 }
 
 enum WorkedHourStatus {
@@ -320,4 +303,13 @@ enum WorkedHourStatus {
   APPROVED
   REJECTED
   CANCELED
+}
+
+enum TrialStudentStatus {
+  SCHEDULED
+  PENDING_STATUS
+  CONVERTED
+  NOT_CONVERTED
+  RESCHEDULED
+  CANCELLED
 }

@@ -2,6 +2,7 @@ import { PrismaService } from './../config/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
+import { ILead } from './lead.type';
 
 @Injectable()
 export class LeadService {
@@ -17,7 +18,6 @@ export class LeadService {
     name,
     phone,
     findUsBy,
-    age,
     score,
     status,
     modality,
@@ -48,7 +48,6 @@ export class LeadService {
           : undefined,
         phone: phone ? { contains: phone } : undefined,
         findUsBy: findUsBy ? { equals: findUsBy } : undefined,
-        age: age ? { equals: Number(age) } : undefined,
         score: score ? { equals: Number(score) } : undefined,
         status: status ? { equals: Number(status) } : undefined,
         modalityOfInterest: modality ? { equals: modality } : undefined,
@@ -127,21 +126,30 @@ export class LeadService {
     status?: string;
     score?: number;
   }) {
-    const { ids, city, findUsBy, modalityOfInterest, preferencePeriod, status, score } = updateLeadDto;
-  
+    const {
+      ids,
+      city,
+      findUsBy,
+      modalityOfInterest,
+      preferencePeriod,
+      status,
+      score,
+    } = updateLeadDto;
+
     if (!ids || ids.length === 0) {
       throw new Error('Nenhum ID fornecido para atualização em lote.');
     }
 
-    const dataToUpdate: any = {};
-  
-    if (!!city) dataToUpdate.city = city;
-    if (!!findUsBy) dataToUpdate.findUsBy = findUsBy;
-    if (!!modalityOfInterest) dataToUpdate.modalityOfInterest = modalityOfInterest;
-    if (!!preferencePeriod) dataToUpdate.preferencePeriod = preferencePeriod;
-    if (!!status) dataToUpdate.status = Number(status);
-    if (!!score) dataToUpdate.score = Number(score);
-  
+    const dataToUpdate: Partial<ILead> = {};
+
+    if (city) dataToUpdate.city = city;
+    if (findUsBy) dataToUpdate.findUsBy = findUsBy;
+    if (modalityOfInterest)
+      dataToUpdate.modalityOfInterest = modalityOfInterest;
+    if (preferencePeriod) dataToUpdate.preferencePeriod = preferencePeriod;
+    if (status) dataToUpdate.status = Number(status);
+    if (score) dataToUpdate.score = Number(score);
+
     const result = await this.prisma.lead.updateMany({
       where: {
         id: {
@@ -150,7 +158,7 @@ export class LeadService {
       },
       data: dataToUpdate,
     });
-  
+
     return {
       message: `Atualizados ${result.count} leads com sucesso.`,
       updatedCount: result.count,

@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Version,
+} from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 
@@ -14,9 +25,21 @@ export class PaymentController {
   @Get('dashboard')
   async getDashboard(
     @Query('month') month?: string,
-    @Query('year') year?: string
+    @Query('year') year?: string,
   ) {
     return await this.paymentService.getFinancialDashboard({
+      month: month ? Number(month) : undefined,
+      year: year ? Number(year) : undefined,
+    });
+  }
+
+  @Version('2')
+  @Get('dashboard/stats')
+  async getDashboardStats(
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+  ) {
+    return await this.paymentService.getFinancialDashboardV2({
       month: month ? Number(month) : undefined,
       year: year ? Number(year) : undefined,
     });
@@ -30,7 +53,10 @@ export class PaymentController {
 
   @Patch(':id')
   @HttpCode(200)
-  async update(@Param('id') id: string, @Body() updatePaymentDto: CreatePaymentDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updatePaymentDto: CreatePaymentDto,
+  ) {
     return await this.paymentService.update(id, updatePaymentDto);
   }
 

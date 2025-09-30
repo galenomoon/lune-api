@@ -8,6 +8,7 @@ import {
   UseGuards,
   Query,
   Post,
+  Version,
 } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { UpdateStudentDto } from './dto/update-student.dto';
@@ -19,18 +20,24 @@ export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
   @Get()
-  async findAll(
-    @Query('name') name: string,
-    @Query('status') status: string,
-    @Query('planId') planId: string,
-    @Query('paymentDay') paymentDay: number,
-  ) {
+  async findAll() {
     return await this.studentsService.findAll();
+  }
+
+  @Version('2')
+  @Get(':id')
+  async findOneV2(@Param('id') id: string) {
+    return await this.studentsService.findOneV2(id);
   }
 
   @Get('search')
   async search(@Query('query') name: string) {
     return await this.studentsService.search({ name });
+  }
+
+  @Get('enrollment-form-data')
+  async getEnrollmentFormData() {
+    return await this.studentsService.getEnrollmentFormData();
   }
 
   @Patch(':id')
@@ -44,14 +51,27 @@ export class StudentsController {
   @Post('add/enrollment/:id')
   async addEnrollment(
     @Param('id') id: string,
-    @Body() { planId, classId, startDate, paymentDay, durationInDays },
+    @Body()
+    {
+      planId,
+      classId,
+      startDate,
+      paymentDay,
+      durationInDays,
+    }: {
+      planId: string;
+      classId: string;
+      startDate: Date;
+      paymentDay: number;
+      durationInDays: number;
+    },
   ) {
     return await this.studentsService.addEnrollment(id, {
       planId,
       classId,
       startDate,
       paymentDay,
-      durationInDays
+      durationInDays,
     });
   }
 

@@ -21,7 +21,7 @@ import { DBModule } from './db/db.module';
 import { MailModule } from './mail/mail.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { TrialStudentsModule } from './trial-students/trial-students.module';
-import { WorkedHoursModule } from './worked-hours/worked-hours.module';
+// import { WorkedHoursModule } from './worked-hours/worked-hours.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -63,7 +63,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     }),
     AddressesModule,
     TrialStudentsModule,
-    WorkedHoursModule,
+    // WorkedHoursModule,
   ],
   controllers: [AppController],
   providers: [AppService],
