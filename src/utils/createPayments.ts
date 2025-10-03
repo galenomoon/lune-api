@@ -1,16 +1,29 @@
 import { planDetailsIndexedByDurationInDays } from 'src/constants';
 import { CreatePaymentDto } from 'src/payment/dto/create-payment.dto';
 import { addHours } from './addHours';
+import { Plan } from '@prisma/client';
 
-export const createPayments = ({ enrollment, plan, enrollmentTax = 100 }) => {
+export const createPayments = ({
+  enrollment,
+  plan,
+  enrollmentTax = 0,
+}: {
+  enrollment: {
+    id: string;
+    startDate: Date;
+    paymentDay: number;
+  };
+  plan: Plan;
+  enrollmentTax?: number;
+}) => {
   const today = addHours(new Date());
 
   const { id: enrollmentId, startDate, paymentDay } = enrollment;
   const { durationInDays, price } = plan;
 
-  let payments = [] as CreatePaymentDto[];
+  const payments = [] as CreatePaymentDto[];
 
-  let firstPaymentDate = new Date(startDate);
+  const firstPaymentDate = new Date(startDate);
   firstPaymentDate.setDate(+paymentDay);
 
   if (
@@ -21,13 +34,15 @@ export const createPayments = ({ enrollment, plan, enrollmentTax = 100 }) => {
   }
 
   const monthsQuantity =
-    planDetailsIndexedByDurationInDays[durationInDays].monthsQuantity;
+    planDetailsIndexedByDurationInDays[
+      durationInDays as keyof typeof planDetailsIndexedByDurationInDays
+    ].monthsQuantity;
 
   for (let i = 0; i < monthsQuantity; i++) {
-    let dueDate = new Date(firstPaymentDate);
+    const dueDate = new Date(firstPaymentDate);
     dueDate.setMonth(dueDate.getMonth() + i);
 
-    let lastDayOfMonth = new Date(
+    const lastDayOfMonth = new Date(
       dueDate.getFullYear(),
       dueDate.getMonth() + 1,
       0,

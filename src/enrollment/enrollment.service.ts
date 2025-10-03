@@ -73,7 +73,6 @@ export class EnrollmentService {
       const payments = createPayments({
         enrollment: createdEnrollment,
         plan: planData,
-        enrollmentTax: 0,
       });
 
       // Para planos mensais, gerar pagamento do mês atual e próximo
@@ -84,16 +83,18 @@ export class EnrollmentService {
           dueDate: newBrazilianDate(),
           status: 'PENDING' as const,
         };
-        
+
         const nextMonthPayment = {
           enrollmentId: createdEnrollment.id,
           amount: planData.price,
-          dueDate: new Date(newBrazilianDate().setMonth(newBrazilianDate().getMonth() + 1)),
+          dueDate: new Date(
+            newBrazilianDate().setMonth(newBrazilianDate().getMonth() + 1),
+          ),
           status: 'PENDING' as const,
         };
 
-        await prisma.payment.createMany({ 
-          data: [currentMonthPayment, nextMonthPayment] 
+        await prisma.payment.createMany({
+          data: [currentMonthPayment, nextMonthPayment],
         });
       } else {
         await prisma.payment.createMany({ data: payments });
@@ -124,7 +125,6 @@ export class EnrollmentService {
 
   async renew(enrollmentId: string, planId: string) {
     return this.prisma.$transaction(async (prisma) => {
-
       // ========== VERIFICAR MATRÍCULA ATUAL ==========
       const currentEnrollment = await prisma.enrollment.findFirst({
         where: { id: enrollmentId, status: 'active' },
@@ -148,7 +148,7 @@ export class EnrollmentService {
       const { durationInDays } = planData;
 
       // ========== CRIAR NOVA MATRÍCULA ==========
-       const { startDate, endDate } = getDateRangeByPlanDurationInDays({
+      const { startDate, endDate } = getDateRangeByPlanDurationInDays({
         startDate: newBrazilianDate(),
         durationInDays,
       });
@@ -179,7 +179,6 @@ export class EnrollmentService {
           paymentDay: currentEnrollment.paymentDay,
         },
         plan: planData,
-        enrollmentTax: 0, 
       });
 
       // Para planos mensais, gerar pagamento do mês atual e próximo
@@ -190,16 +189,18 @@ export class EnrollmentService {
           dueDate: newBrazilianDate(),
           status: 'PENDING' as const,
         };
-        
+
         const nextMonthPayment = {
           enrollmentId: newEnrollment.id,
           amount: planData.price,
-          dueDate: new Date(newBrazilianDate().setMonth(newBrazilianDate().getMonth() + 1)),
+          dueDate: new Date(
+            newBrazilianDate().setMonth(newBrazilianDate().getMonth() + 1),
+          ),
           status: 'PENDING' as const,
         };
 
-        await prisma.payment.createMany({ 
-          data: [currentMonthPayment, nextMonthPayment] 
+        await prisma.payment.createMany({
+          data: [currentMonthPayment, nextMonthPayment],
         });
       } else {
         await prisma.payment.createMany({ data: payments });
