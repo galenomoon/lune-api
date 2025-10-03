@@ -3,6 +3,13 @@ import { CreateGridItemDto } from './dto/create-grid-item.dto';
 import { PrismaService } from 'src/config/prisma.service';
 import { timeToMinutes } from 'src/utils/timeToMinutes';
 
+interface GridItemWithIndex {
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  index: number;
+}
+
 @Injectable()
 export class GridItemsService {
   constructor(private prisma: PrismaService) {}
@@ -45,8 +52,7 @@ export class GridItemsService {
       },
     });
 
-    let response = [] as object[];
-
+    const response = [] as object[];
 
     for (let i = 0; i < gridItems.length; ++i) {
       const { startTime, endTime, dayOfWeek } = gridItems[i];
@@ -110,7 +116,9 @@ export class GridItemsService {
       orderBy: { startTime: 'asc' },
       where: {
         class: {
-          modality: { name: name ? { contains: name, mode: 'insensitive' } : undefined },
+          modality: {
+            name: name ? { contains: name, mode: 'insensitive' } : undefined,
+          },
           teacherId: teacherId ? { equals: teacherId } : undefined,
           description: ageRange ? { equals: ageRange } : undefined,
           modalityId: modalityId ? { equals: modalityId } : undefined,
@@ -120,8 +128,8 @@ export class GridItemsService {
       include: {
         trialStudents: {
           include: {
-            lead: true
-          }
+            lead: true,
+          },
         },
         class: {
           include: {
@@ -129,8 +137,8 @@ export class GridItemsService {
             classLevel: true,
             enrollments: {
               include: {
-                student: true
-              }
+                student: true,
+              },
             },
             teacher: true,
           },
@@ -208,7 +216,9 @@ export class GridItemsService {
 
     for (const item of gridItems) {
       const teacher = item.class?.teacher;
-      const enrollments = item.class?.enrollments.filter(e => e.status === "active").length ?? 0;
+      const enrollments =
+        item.class?.enrollments.filter((e) => e.status === 'active').length ??
+        0;
 
       const [startHour, startMin] = item.startTime.split(':').map(Number);
       const [endHour, endMin] = item.endTime.split(':').map(Number);
@@ -307,29 +317,33 @@ export class GridItemsService {
       },
     });
 
-    let response = [] as object[];
+    // Buscar grid items existentes para esta classe
+    const existingGridItems = await this.prisma.gridItem.findMany({
+      where: { classId },
+    });
 
-    await this.prisma.gridItem.deleteMany({ where: { classId } });
-
-    for (let i = 0; i < gridItems.length; i++) {
-      const { startTime, endTime, dayOfWeek } = gridItems[i];
+    // Validar todos os novos horários antes de fazer qualquer alteração
+    for (const newItem of gridItems) {
+      const { startTime, endTime, dayOfWeek } = newItem;
 
       const startTimeMinutes = timeToMinutes(startTime);
       const endTimeMinutes = timeToMinutes(endTime);
+
       if (startTimeMinutes >= endTimeMinutes) {
         throw new Error(
           "Horário inválido: 'startTime' deve ser menor que 'endTime'.",
         );
       }
 
-      const existingGridItems = await this.prisma.gridItem.findMany({
+      // Verificar conflitos com outras classes (não a atual)
+      const conflictingItems = await this.prisma.gridItem.findMany({
         where: {
           dayOfWeek,
           classId: { not: classId },
         },
       });
 
-      const hasConflict = existingGridItems.some((item) => {
+      const hasConflict = conflictingItems.some((item) => {
         const itemStart = timeToMinutes(item.startTime);
         const itemEnd = timeToMinutes(item.endTime);
 
@@ -341,17 +355,57 @@ export class GridItemsService {
           'Conflito de horário: já existe uma aula neste horário.',
         );
       }
+    }
 
-      const createdGridItem = await this.prisma.gridItem.create({
-        data: {
-          classId,
-          dayOfWeek,
-          startTime,
-          endTime,
+    const response = [] as object[];
+
+    // Criar um mapa dos novos grid items para comparação
+    const newItemsMap = new Map<string, GridItemWithIndex>();
+    gridItems.forEach((item, index) => {
+      const key = `${item.dayOfWeek}-${item.startTime}-${item.endTime}`;
+      newItemsMap.set(key, { ...item, index });
+    });
+
+    // Criar um mapa dos grid items existentes
+    const existingItemsMap = new Map<string, object>();
+    existingGridItems.forEach((item) => {
+      const key = `${item.dayOfWeek}-${item.startTime}-${item.endTime}`;
+      existingItemsMap.set(key, item as object);
+    });
+
+    // Deletar grid items que não existem mais nos novos dados
+    const itemsToDelete = existingGridItems.filter((existingItem) => {
+      const key = `${existingItem.dayOfWeek}-${existingItem.startTime}-${existingItem.endTime}`;
+      return !newItemsMap.has(key);
+    });
+
+    if (itemsToDelete.length > 0) {
+      await this.prisma.gridItem.deleteMany({
+        where: {
+          id: { in: itemsToDelete.map((item) => item.id) },
         },
       });
+    }
 
-      response.push(createdGridItem);
+    // Atualizar ou criar grid items
+    for (const [key, newItem] of newItemsMap) {
+      const existingItem = existingItemsMap.get(key);
+
+      if (existingItem) {
+        // Item já existe, manter na resposta
+        response.push(existingItem);
+      } else {
+        // Item é novo, criar
+        const createdGridItem = await this.prisma.gridItem.create({
+          data: {
+            classId,
+            dayOfWeek: newItem.dayOfWeek,
+            startTime: newItem.startTime,
+            endTime: newItem.endTime,
+          },
+        });
+        response.push(createdGridItem);
+      }
     }
 
     return response;
@@ -379,7 +433,6 @@ export class GridItemsService {
     const deletedGridItem = await this.prisma.gridItem.delete({
       where: { id },
     });
-
 
     return deletedGridItem;
   }
