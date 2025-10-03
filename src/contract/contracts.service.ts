@@ -159,7 +159,7 @@ export class ContractsService {
       image: enrollmentData.signature,
     });
 
-    let docxBuffer = doc
+    const docxBuffer = doc
       .getZip()
       .generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 
@@ -193,7 +193,17 @@ export class ContractsService {
   async getContractByToken(token: string) {
     const contractToken = await this.prisma.contractSignToken.findUnique({
       where: { token },
-      include: { enrollment: { include: { student: true } } },
+      include: {
+        enrollment: {
+          include: {
+            student: true,
+            class: {
+              include: { modality: true },
+            },
+            plan: true,
+          },
+        },
+      },
     });
 
     if (

@@ -7,12 +7,16 @@ export class ContractsController {
   constructor(private readonly contractsService: ContractsService) {}
 
   @Get(':enrollmentId/download')
-  async downloadContract(@Param('enrollmentId') enrollmentId: string, @Res() res: Response) {
-
-    const { file, filename } = await this.contractsService.generateContract(enrollmentId);
+  async downloadContract(
+    @Param('enrollmentId') enrollmentId: string,
+    @Res() res: Response,
+  ) {
+    const { file, filename } =
+      await this.contractsService.generateContract(enrollmentId);
 
     res.set({
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'Content-Disposition': `attachment; filename=Contrato_${filename}.docx`,
     });
     res.send(file);
@@ -29,7 +33,10 @@ export class ContractsController {
   }
 
   @Post('sign/:token')
-  async sign(@Param('token') token: string, @Body('signature') signature: string) {
+  async sign(
+    @Param('token') token: string,
+    @Body('signature') signature: string,
+  ) {
     return this.contractsService.signContract(token, signature);
   }
 }
