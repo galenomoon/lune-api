@@ -68,4 +68,9 @@ export class TrialStudentsController {
       updateStatusDto.status,
     );
   }
+
+  @Get('cron/update-past')
+  async updatePastTrialStudentsStatus() {
+    return await this.trialStudentsService.updatePastTrialStudentsStatus();
+  }
 }
