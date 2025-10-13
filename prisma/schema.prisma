@@ -182,14 +182,14 @@ model TrialInvite {
 
 model TrialStudent {
   id         String                @id @default(cuid())
-  gridItemId String
+  gridItemId String?
   date       DateTime
   inviteId   String?               @unique
   status     TrialStudentStatus    @default(SCHEDULED)
   createdAt  DateTime              @default(now())
   updatedAt  DateTime              @default(now()) @updatedAt
   leadId     String
-  gridItem   GridItem              @relation(fields: [gridItemId], references: [id], onDelete: Cascade)
+  gridItem   GridItem?             @relation(fields: [gridItemId], references: [id], onDelete: SetNull)
   invite     TrialInvite?          @relation(fields: [inviteId], references: [id], onDelete: Cascade)
   lead       Lead                  @relation(fields: [leadId], references: [id], onDelete: Cascade)
 

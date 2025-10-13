@@ -81,24 +81,50 @@ export class TrialStudentsService {
       };
     }
 
+    // Separar trial students com e sem gridItem
+    const trialStudentsWithGrid = trialStudents.filter((ts) => ts.gridItem);
+    const trialStudentsWithoutGrid = trialStudents.filter((ts) => !ts.gridItem);
+
+    if (trialStudentsWithoutGrid.length > 0) {
+      console.log(
+        `Encontrados ${trialStudentsWithoutGrid.length} trial students sem gridItem (horário foi editado/deletado) - preservando para histórico`,
+      );
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const futureTrials = trialStudents.filter((t) => t.date >= today);
+    const futureTrials = trialStudentsWithGrid.filter((t) => t.date >= today);
 
     const nearestDate = futureTrials.length ? futureTrials[0].date : null;
 
     if (!nearestDate) {
       return {
         nearestTrialClasses: null,
-        list: trialStudents.map((item) => ({
-          ...item,
-          ...item.lead,
-          ...item.gridItem,
-          teacherName: item.gridItem.class!.teacher!.firstName || '',
-          id: item.id,
-          trialStatus: item.status as string,
-        })),
+        list: [
+          // Trial students com gridItem
+          ...trialStudentsWithGrid.map((item) => ({
+            ...item,
+            ...item.lead,
+            ...item.gridItem,
+            teacherName: item?.gridItem?.class!.teacher!.firstName || '',
+            id: item.id,
+            trialStatus: item.status as string,
+          })),
+          // Trial students sem gridItem (histórico)
+          ...trialStudentsWithoutGrid.map((item) => ({
+            ...item,
+            ...item.lead,
+            id: item.id,
+            trialStatus: item.status as string,
+            // Campos vazios para compatibilidade
+            dayOfWeek: 'N/A',
+            startTime: 'N/A',
+            endTime: 'N/A',
+            teacherName: 'N/A',
+            gridItemDeleted: true, // Flag para indicar que o gridItem foi deletado
+          })),
+        ],
       };
     }
 
@@ -111,20 +137,20 @@ export class TrialStudentsService {
       classLevel: string;
       startTime: string;
       endTime: string;
-      trialStudents: typeof trialStudents;
+      trialStudents: typeof trialStudentsWithGrid;
     };
 
     const groupedByGridItem: Record<string, TrialClassGroup> = {};
 
     for (const trial of nearestTrialsSameDay) {
-      const gridItemId = trial.gridItem.id;
+      const gridItemId = trial?.gridItem?.id || '';
 
       if (!groupedByGridItem[gridItemId]) {
         groupedByGridItem[gridItemId] = {
-          modality: trial.gridItem.class!.modality.name,
-          classLevel: trial.gridItem.class!.classLevel?.name || '',
-          startTime: trial.gridItem.startTime,
-          endTime: trial.gridItem.endTime,
+          modality: trial?.gridItem?.class!.modality.name || '',
+          classLevel: trial?.gridItem?.class!.classLevel?.name || '',
+          startTime: trial?.gridItem?.startTime || '',
+          endTime: trial?.gridItem?.endTime || '',
           trialStudents: [],
         };
       }
@@ -157,10 +183,10 @@ export class TrialStudentsService {
     daysOfWeek.forEach((day) => {
       weekResume[day] = {}; // Inicializa cada dia com um objeto vazio
 
-      // Filtra as aulas para cada dia da semana
-      trialStudents.forEach((trial) => {
-        const trialDay = trial.gridItem.dayOfWeek;
-        const gridItemLabel = `${trial.gridItem.class!.modality.name}@${trial.gridItem.class!.classLevel?.name || ''} ${trial.gridItem.class!.description || ''} | ${trial.gridItem.startTime || ''} - ${trial.gridItem.endTime || ''}`;
+      // Filtra as aulas para cada dia da semana (apenas com gridItem)
+      trialStudentsWithGrid.forEach((trial) => {
+        const trialDay = trial?.gridItem?.dayOfWeek || '';
+        const gridItemLabel = `${trial?.gridItem?.class!.modality.name}@${trial?.gridItem?.class!.classLevel?.name || ''} ${trial?.gridItem?.class!.description || ''} | ${trial?.gridItem?.startTime || ''} - ${trial?.gridItem?.endTime || ''}`;
 
         if (trialDay === day) {
           if (!weekResume[day][gridItemLabel]) {
@@ -170,7 +196,7 @@ export class TrialStudentsService {
           weekResume[day][gridItemLabel].push({
             trial,
             ...trial.lead,
-            teacherName: trial.gridItem.class!.teacher!.firstName || '',
+            teacherName: trial?.gridItem?.class!.teacher!.firstName || '',
             trialStatus: trial.status as string,
           });
         }
@@ -183,14 +209,30 @@ export class TrialStudentsService {
         totalTrialStudents: nearestTrialsSameDay.length,
         trialClasses,
       },
-      list: trialStudents.map((item) => ({
-        ...item,
-        ...item.lead,
-        ...item.gridItem,
-        teacherName: item.gridItem.class!.teacher!.firstName || '',
-        id: item.id,
-        trialStatus: item.status as string,
-      })),
+      list: [
+        // Trial students com gridItem
+        ...trialStudentsWithGrid.map((item) => ({
+          ...item,
+          ...item.lead,
+          ...item.gridItem,
+          teacherName: item?.gridItem?.class!.teacher!.firstName || '',
+          id: item.id,
+          trialStatus: item.status as string,
+        })),
+        // Trial students sem gridItem (histórico)
+        ...trialStudentsWithoutGrid.map((item) => ({
+          ...item,
+          ...item.lead,
+          id: item.id,
+          trialStatus: item.status as string,
+          // Campos vazios para compatibilidade
+          dayOfWeek: 'N/A',
+          startTime: 'N/A',
+          endTime: 'N/A',
+          teacherName: 'N/A',
+          gridItemDeleted: true, // Flag para indicar que o gridItem foi deletado
+        })),
+      ],
       weekResume,
     };
   }

@@ -150,8 +150,10 @@ export class GridItemsService {
 
     gridItems.forEach((item) => {
       let existingBlock = scheduleList.find((block) => {
-        const firstItem = Object.values(block).find(
-          (v) => v?.startTime === item.startTime,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const firstItem: any = Object.values(block).find(
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          (v: any) => v?.startTime === item.startTime,
         );
         return firstItem !== undefined;
       });
@@ -380,6 +382,7 @@ export class GridItemsService {
     });
 
     if (itemsToDelete.length > 0) {
+      // O onDelete: SetNull no schema vai automaticamente setar gridItemId como null nos trial students
       await this.prisma.gridItem.deleteMany({
         where: {
           id: { in: itemsToDelete.map((item) => item.id) },
@@ -430,6 +433,7 @@ export class GridItemsService {
       );
     }
 
+    // O onDelete: SetNull no schema vai automaticamente setar gridItemId como null nos trial students
     const deletedGridItem = await this.prisma.gridItem.delete({
       where: { id },
     });
