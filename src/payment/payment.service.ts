@@ -434,6 +434,8 @@ export class PaymentService {
         },
         enrollmentsToClasses: {
           value: currentAvg.toFixed(2),
+          enrollments: activeEnrollments,
+          classes: activeClasses,
           trend: {
             value: enrollmentsToClassesTrend.value,
             isPositive: enrollmentsToClassesTrend.isPositive,
