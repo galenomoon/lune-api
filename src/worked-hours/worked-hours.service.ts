@@ -146,7 +146,12 @@ export class WorkedHoursService {
       throw new Error('Horário da turma não encontrado na grade');
     }
 
-    const workedDate = new Date(createWorkedHourDto.workedAt);
+    // Converter para o timezone de São Paulo para evitar problemas de fuso horário
+    const workedDate = new Date(
+      new Date(createWorkedHourDto.workedAt).toLocaleString('en-US', {
+        timeZone: 'America/Sao_Paulo',
+      }),
+    );
     const startTime = this.convertStringTimeToDate(
       gridItem.startTime,
       workedDate,
@@ -156,12 +161,17 @@ export class WorkedHoursService {
       ((startTime.getTime() - endTime.getTime()) / 1000 / 60) * -1;
 
     // Contar trial students naquele dia
+    const startOfDay = new Date(workedDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(workedDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
     const trialStudentsCount = await this.prismaService.trialStudent.count({
       where: {
         gridItemId: gridItem.id,
         date: {
-          gte: new Date(workedDate.setHours(0, 0, 0, 0)),
-          lte: new Date(workedDate.setHours(23, 59, 59, 999)),
+          gte: startOfDay,
+          lte: endOfDay,
         },
       },
     });
@@ -480,6 +490,7 @@ export class WorkedHoursService {
       workedAt?: Date;
       newEnrollmentsCount?: number;
       status?: WorkedHourStatus;
+      priceSnapshot?: number;
     },
   ) {
     const workedHour = await this.prismaService.workedHour.findUnique({
@@ -583,6 +594,10 @@ export class WorkedHoursService {
 
     if (updateData.status) {
       updatePayload.status = updateData.status;
+    }
+
+    if (updateData.priceSnapshot !== undefined) {
+      updatePayload.priceSnapshot = updateData.priceSnapshot;
     }
 
     return await this.prismaService.workedHour.update({

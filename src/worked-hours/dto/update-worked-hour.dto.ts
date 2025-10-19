@@ -1,5 +1,3 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateWorkedHourDto } from './create-worked-hour.dto';
 import { WorkedHourStatus } from '@prisma/client';
 
 export class UpdateWorkedHourDto {
@@ -8,6 +6,7 @@ export class UpdateWorkedHourDto {
   workedAt?: Date;
   newEnrollmentsCount?: number;
   status?: WorkedHourStatus;
+  priceSnapshot?: number;
 }
 
 export class UpdateWorkedHourTeacherDto {
