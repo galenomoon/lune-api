@@ -20,6 +20,10 @@
     {
       "path": "/api/v1/trial-students/cron/update-past",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/v1/worked-hours/cron/create-batch",
+      "schedule": "0 0 * * *"
     }
   ],
   "env": {

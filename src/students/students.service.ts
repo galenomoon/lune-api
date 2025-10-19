@@ -17,6 +17,12 @@ export class StudentsService {
           include: {
             payments: true,
             student: true,
+            plan: true,
+            class: {
+              include: {
+                modality: true,
+              },
+            },
           },
           where: {
             status: {

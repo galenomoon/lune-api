@@ -38,7 +38,7 @@ export class ClassesService {
         classLevel: true,
         teacher: true,
         gridClasses: true,
-        modality: true
+        modality: true,
       },
       orderBy: {
         updatedAt: 'desc',
@@ -85,6 +85,40 @@ export class ClassesService {
   }
 
   async remove(id: string) {
-    return await this.prisma.class.delete({ where: { id } });
+    const classData = await this.prisma.class.findUnique({
+      where: { id },
+      include: {
+        enrollments: {
+          where: {
+            status: 'active',
+          },
+        },
+        gridClasses: true,
+      },
+    });
+
+    if (!classData) {
+      throw new Error(`Classe com ID ${id} não encontrada.`);
+    }
+
+    // Verificar se há matrículas ativas
+    if (classData.enrollments.length > 0) {
+      throw new Error(
+        'Não é possível excluir esta classe, pois existem alunos matriculados.',
+      );
+    }
+
+    // Se não tem matrículas ativas, deletar em cascata usando transação
+    return await this.prisma.$transaction(async (prisma) => {
+      // Deletar todos os grid items da classe
+      await prisma.gridItem.deleteMany({
+        where: {
+          classId: id,
+        },
+      });
+
+      // Deletar a classe
+      return await prisma.class.delete({ where: { id } });
+    });
   }
 }

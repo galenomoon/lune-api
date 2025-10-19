@@ -274,19 +274,31 @@ model ClassLevel {
 }
 
 model WorkedHour {
-  id            String           @id @default(cuid())
-  teacherId     String
-  classId       String
-  workedAt      DateTime
-  startedAt     DateTime
-  endedAt       DateTime
-  duration      Int
-  priceSnapshot Float
-  status        WorkedHourStatus
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  class         Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
-  teacher       Teacher          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  id                     String           @id @default(cuid())
+  teacherId              String
+  classId                String
+  workedAt               DateTime
+  startedAt              DateTime
+  endedAt                DateTime
+  duration               Int
+  priceSnapshot          Float
+  status                 WorkedHourStatus
+  // Snapshots para evitar problemas com mudanças futuras
+  teacherNameSnapshot    String           @default("")
+  modalityNameSnapshot   String           @default("")
+  classLevelSnapshot     String?
+  classDescriptionSnapshot String?
+  // Contabilização de alunos
+  enrolledStudentsCount  Int              @default(0)
+  trialStudentsCount     Int              @default(0)
+  totalStudentsCount     Int              @default(0)
+  // Conversões de matrículas naquele dia
+  newEnrollmentsCount    Int              @default(0)
+  
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  class                  Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher                Teacher          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@map("worked_hours")
 }
@@ -301,8 +313,6 @@ enum PaymentStatus {
 enum WorkedHourStatus {
   PENDING
   DONE
-  APPROVED
-  REJECTED
   CANCELED
 }
 

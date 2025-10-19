@@ -424,12 +424,13 @@ export class GridItemsService {
     const classEnrollments = await this.prisma.enrollment.findMany({
       where: {
         classId: gridItem.classId,
+        status: 'active',
       },
     });
 
     if (classEnrollments.length > 0) {
       throw new Error(
-        'Não é possível excluir este horário, pois existem matrículas associadas à classe.',
+        'Não é possível excluir este horário, pois existem matrículas ativas associadas à classe.',
       );
     }
 

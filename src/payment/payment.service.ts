@@ -414,7 +414,7 @@ export class PaymentService {
     });
 
     // Dados das modalidades para pie chart
-    const modalitiesData = await this.getModalitiesStats();
+    const modalitiesData = await this.getModalitiesStats(start, end);
 
     return {
       cards: {
@@ -456,7 +456,7 @@ export class PaymentService {
     };
   }
 
-  async getModalitiesStats() {
+  async getModalitiesStats(startDate?: Date, endDate?: Date) {
     const modalities = await this.prisma.modality.findMany({
       include: {
         classes: {
@@ -470,6 +470,13 @@ export class PaymentService {
               include: {
                 trialStudents: {
                   where: {
+                    ...(startDate &&
+                      endDate && {
+                        date: {
+                          gte: startDate,
+                          lte: endDate,
+                        },
+                      }),
                     NOT: {
                       status: 'CANCELLED',
                     },

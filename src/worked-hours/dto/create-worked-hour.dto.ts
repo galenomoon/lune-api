@@ -1,17 +1,9 @@
+import { WorkedHourStatus } from '@prisma/client';
+
 export class CreateWorkedHourDto {
   teacherId: string;
   classId: string;
   workedAt: Date;
-  startedAt: string;
-  endedAt: string;
-  priceSnapshot: number;
-  status: WorkedHourStatus;
-}
-
-enum WorkedHourStatus {
-  PENDING = 'PENDING',
-  DONE = 'DONE',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED',
-  CANCELED = 'CANCELED',
+  newEnrollmentsCount?: number;
+  status?: WorkedHourStatus;
 }
