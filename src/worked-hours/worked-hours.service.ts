@@ -659,6 +659,87 @@ export class WorkedHoursService {
     return { count };
   }
 
+  async findAllByTeacher(month: string, year: string) {
+    // Criar data corretamente para evitar problemas de timezone
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const startDate = startOfMonth(date);
+    const endDate = endOfMonth(date);
+
+    // Buscar todas as worked hours do mês com status DONE
+    const workedHours = await this.prismaService.workedHour.findMany({
+      where: {
+        workedAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+        status: WorkedHourStatus.DONE,
+      },
+      include: {
+        teacher: {
+          select: {
+            pixKey: true,
+          },
+        },
+      },
+    });
+
+    // Agrupar por professor
+    const teacherMap = new Map<
+      string,
+      {
+        teacherId: string;
+        teacherName: string;
+        totalClasses: number;
+        newEnrollments: number;
+        priceHour: number;
+        totalToPay: number;
+        modalities: Set<string>;
+        pixKey: string | null;
+      }
+    >();
+
+    workedHours.forEach((wh) => {
+      const teacherId = wh.teacherId;
+
+      if (!teacherMap.has(teacherId)) {
+        teacherMap.set(teacherId, {
+          teacherId,
+          teacherName: wh.teacherNameSnapshot,
+          totalClasses: 0,
+          newEnrollments: 0,
+          priceHour: wh.priceSnapshot,
+          totalToPay: 0,
+          modalities: new Set<string>(),
+          pixKey: wh.teacher?.pixKey || null,
+        });
+      }
+
+      const teacher = teacherMap.get(teacherId)!;
+      const hours = wh.duration / 60;
+      teacher.totalClasses += 1;
+      teacher.newEnrollments += wh.newEnrollmentsCount;
+      teacher.totalToPay += hours * wh.priceSnapshot;
+      teacher.modalities.add(wh.modalityNameSnapshot);
+    });
+
+    // Converter para array e transformar Set em array
+    const teachers = Array.from(teacherMap.values()).map((teacher) => ({
+      teacherId: teacher.teacherId,
+      teacherName: teacher.teacherName,
+      totalClasses: teacher.totalClasses,
+      newEnrollments: teacher.newEnrollments,
+      priceHour: teacher.priceHour,
+      totalToPay: teacher.totalToPay,
+      modalities: Array.from(teacher.modalities),
+      pixKey: teacher.pixKey,
+    }));
+
+    // Ordenar por total a pagar (decrescente)
+    teachers.sort((a, b) => b.totalToPay - a.totalToPay);
+
+    return { teachers };
+  }
+
   convertStringTimeToDate(time: string, date: Date): Date {
     const _date = new Date(date);
     const [hour, min] = time.split(':').map(Number);

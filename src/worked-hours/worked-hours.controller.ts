@@ -36,6 +36,15 @@ export class WorkedHoursController {
     return await this.workedHoursService.findAll(month, year);
   }
 
+  @UseGuards(AuthGuard)
+  @Get('by-teacher')
+  async findAllByTeacher(
+    @Query('month') month: string,
+    @Query('year') year: string,
+  ) {
+    return await this.workedHoursService.findAllByTeacher(month, year);
+  }
+
   // Rotas específicas DEVEM vir ANTES das rotas com parâmetros
   @Get('cron/create-batch')
   async cronCreateBatch() {
