@@ -77,40 +77,53 @@ export class WorkedHoursService {
       },
     });
 
-    const workedHours = gridItems.map((gridItem) => {
-      const start = this.convertStringTimeToDate(
-        gridItem.startTime,
-        new Date(),
-      );
-      const end = this.convertStringTimeToDate(gridItem.endTime, new Date());
-
-      const duration = ((start.getTime() - end.getTime()) / 1000 / 60) * -1;
-
-      const enrolledStudentsCount = gridItem.class?.enrollments?.length || 0;
-      const trialStudentsCount = gridItem.trialStudents?.length || 0;
-
-      return {
-        teacherId: gridItem.class?.teacherId || '',
-        classId: gridItem.classId || '',
-        workedAt: dateAmericaSP,
-        startedAt: this.convertStringTimeToDate(
+    const workedHours = gridItems
+      .map((gridItem) => {
+        const start = this.convertStringTimeToDate(
           gridItem.startTime,
-          dateAmericaSP,
-        ),
-        endedAt: this.convertStringTimeToDate(gridItem.endTime, dateAmericaSP),
-        priceSnapshot: gridItem.class?.teacher?.priceHour || 0,
-        status: WorkedHourStatus.PENDING,
-        duration,
-        teacherNameSnapshot: `${gridItem.class?.teacher?.firstName || ''} ${gridItem.class?.teacher?.lastName || ''}`,
-        modalityNameSnapshot: gridItem.class?.modality?.name || '',
-        classLevelSnapshot: gridItem.class?.classLevel?.name || null,
-        classDescriptionSnapshot: gridItem.class?.description || null,
-        enrolledStudentsCount,
-        trialStudentsCount,
-        totalStudentsCount: enrolledStudentsCount + trialStudentsCount,
-        newEnrollmentsCount: 0, // Será atualizado depois quando matriculas forem criadas
-      };
-    });
+          new Date(),
+        );
+        const end = this.convertStringTimeToDate(gridItem.endTime, new Date());
+
+        const duration = ((start.getTime() - end.getTime()) / 1000 / 60) * -1;
+
+        const enrolledStudentsCount = gridItem.class?.enrollments?.length || 0;
+        const trialStudentsCount = gridItem.trialStudents?.length || 0;
+
+        return {
+          teacherId: gridItem.class?.teacherId || '',
+          classId: gridItem.classId || '',
+          workedAt: dateAmericaSP,
+          startedAt: this.convertStringTimeToDate(
+            gridItem.startTime,
+            dateAmericaSP,
+          ),
+          endedAt: this.convertStringTimeToDate(
+            gridItem.endTime,
+            dateAmericaSP,
+          ),
+          priceSnapshot: gridItem.class?.teacher?.priceHour || 0,
+          status: WorkedHourStatus.PENDING,
+          duration,
+          teacherNameSnapshot: `${gridItem.class?.teacher?.firstName || ''} ${gridItem.class?.teacher?.lastName || ''}`,
+          modalityNameSnapshot: gridItem.class?.modality?.name || '',
+          classLevelSnapshot: gridItem.class?.classLevel?.name || null,
+          classDescriptionSnapshot: gridItem.class?.description || null,
+          enrolledStudentsCount,
+          trialStudentsCount,
+          totalStudentsCount: enrolledStudentsCount + trialStudentsCount,
+          newEnrollmentsCount: 0, // Será atualizado depois quando matriculas forem criadas
+        };
+      })
+      .filter((workedHour) => {
+        // Só cria registro se houver ao menos 1 matrícula ativa OU 1 aula experimental
+        return workedHour.totalStudentsCount > 0;
+      });
+
+    if (workedHours.length === 0) {
+      console.log('No classes with students today');
+      return { count: 0 };
+    }
 
     const createdWorkedHours = await this.prismaService.workedHour.createMany({
       data: workedHours,
