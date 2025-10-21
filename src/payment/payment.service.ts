@@ -1,7 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/config/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { getIsOverdue } from 'src/utils/getIsOverdue';
+import { calculateTotalTeacherSalaries } from 'src/utils/calculateTeacherSalary';
 
 @Injectable()
 export class PaymentService {
@@ -200,6 +203,60 @@ export class PaymentService {
       },
     });
 
+    // Buscar configurações (para comissão e preço da trial class)
+    const settings = await this.prisma.settings.findFirst();
+    const commissionPerEnrollment = settings
+      ? Number(settings.teacherCommissionPerEnrollment)
+      : 0;
+    const trialClassPrice = settings?.trialClassPrice || 0;
+
+    // Buscar worked hours DONE do mês para calcular custos com professores
+    const workedHoursThisMonth = await this.prisma.workedHour.findMany({
+      where: {
+        workedAt: {
+          gte: start,
+          lte: end,
+        },
+        status: 'DONE',
+      },
+    });
+
+    // Buscar despesas do mês (independente do status)
+    const expensesThisMonth = await this.prisma.expense.findMany({
+      where: {
+        createdAt: {
+          gte: start,
+          lte: end,
+        },
+      },
+    });
+
+    // Buscar trial classes agendadas do mês (apenas com status SCHEDULED)
+    const scheduledTrialClasses = await this.prisma.trialStudent.count({
+      where: {
+        date: {
+          gte: start,
+          lte: end,
+        },
+        status: 'SCHEDULED',
+      },
+    });
+
+    // Buscar trial classes realizadas do mês (status diferente de SCHEDULED e CANCELLED)
+    const completedTrialClasses = await this.prisma.trialStudent.count({
+      where: {
+        date: {
+          gte: start,
+          lte: end,
+        },
+        NOT: {
+          status: {
+            in: ['SCHEDULED', 'CANCELLED'],
+          },
+        },
+      },
+    });
+
     // Pagamentos dos últimos 4 meses para comparação
     const last4MonthsData: Array<{ date: string; revenue: number }> = [];
     for (let i = 0; i < 4; i++) {
@@ -224,24 +281,65 @@ export class PaymentService {
         },
       });
 
+      const monthCompletedTrialClasses = await this.prisma.trialStudent.count({
+        where: {
+          date: {
+            gte: monthStart,
+            lte: monthEnd,
+          },
+          NOT: {
+            status: {
+              in: ['SCHEDULED', 'CANCELLED'],
+            },
+          },
+        },
+      });
+
       const totalRevenue = monthPayments.reduce((sum, p) => sum + p.amount, 0);
+      const trialClassesRevenue = monthCompletedTrialClasses * trialClassPrice;
 
       last4MonthsData.push({
         date: monthStart.toISOString().slice(0, 7), // YYYY-MM format
-        revenue: totalRevenue,
+        revenue: totalRevenue + trialClassesRevenue,
       });
     }
 
     // Calcular estatísticas
-    const totalToReceive = paymentsThisMonth
-      .filter((p) => p.status === 'PENDING')
+    const pendingPayments = paymentsThisMonth
+      .filter((p) => p.status !== 'PAID')
       .reduce((sum, p) => sum + p.amount, 0);
+
+    const expectedFromTrialClasses = scheduledTrialClasses * trialClassPrice;
+
+    const totalToReceive = pendingPayments + expectedFromTrialClasses;
 
     const totalReceived = paymentsThisMonth
       .filter((p) => p.status === 'PAID')
       .reduce((sum, p) => sum + p.amount, 0);
 
-    const currentMonthRevenue = totalReceived;
+    const revenueFromTrialClasses = completedTrialClasses * trialClassPrice;
+
+    const currentMonthRevenue = totalReceived + revenueFromTrialClasses;
+
+    // Calcular custos do mês usando a fórmula padrão do sistema
+    const teacherSalaries = calculateTotalTeacherSalaries(
+      workedHoursThisMonth.map((wh) => ({
+        duration: wh.duration,
+        priceSnapshot: wh.priceSnapshot,
+        newEnrollmentsCount: wh.newEnrollmentsCount as number,
+      })),
+      commissionPerEnrollment,
+    );
+
+    const teacherCosts = teacherSalaries.total;
+
+    const expensesCosts = expensesThisMonth.reduce(
+      (sum, expense) => sum + expense.amount,
+      0,
+    );
+
+    const totalCosts = teacherCosts + expensesCosts;
+    const profit = currentMonthRevenue - totalCosts;
 
     // Contar matrículas ativas e turmas
     const activeEnrollments = await this.prisma.enrollment.count({
@@ -273,6 +371,10 @@ export class PaymentService {
       },
     });
 
+    // Total de trial classes agendadas e realizadas separadamente
+    const trialClassesScheduled = scheduledTrialClasses;
+    const trialClassesCompleted = completedTrialClasses;
+
     // Receita total do mês anterior
     const previousMonth = new Date(targetYear, targetMonth - 2, 1);
     const previousMonthEnd = new Date(
@@ -298,15 +400,87 @@ export class PaymentService {
       },
     });
 
-    const previousTotalToReceive = previousMonthPayments
-      .filter((p) => p.status === 'PENDING')
+    const previousPendingPayments = previousMonthPayments
+      .filter((p) => p.status !== 'PAID')
       .reduce((sum, p) => sum + p.amount, 0);
+
+    const previousScheduledTrialClasses = await this.prisma.trialStudent.count({
+      where: {
+        date: {
+          gte: previousMonth,
+          lte: previousMonthEnd,
+        },
+        status: 'SCHEDULED',
+      },
+    });
+
+    const previousCompletedTrialClasses = await this.prisma.trialStudent.count({
+      where: {
+        date: {
+          gte: previousMonth,
+          lte: previousMonthEnd,
+        },
+        NOT: {
+          status: {
+            in: ['SCHEDULED', 'CANCELLED'],
+          },
+        },
+      },
+    });
+
+    const previousExpectedFromTrialClasses =
+      previousScheduledTrialClasses * trialClassPrice;
+    const previousTotalToReceive =
+      previousPendingPayments + previousExpectedFromTrialClasses;
 
     const previousTotalReceived = previousMonthPayments
       .filter((p) => p.status === 'PAID')
       .reduce((sum, p) => sum + p.amount, 0);
 
-    const previousMonthRevenue = previousTotalToReceive + previousTotalReceived;
+    const previousRevenueFromTrialClasses =
+      previousCompletedTrialClasses * trialClassPrice;
+
+    const previousMonthRevenue =
+      previousTotalReceived + previousRevenueFromTrialClasses;
+
+    // Calcular custos do mês anterior usando a fórmula padrão do sistema
+    const previousWorkedHours = await this.prisma.workedHour.findMany({
+      where: {
+        workedAt: {
+          gte: previousMonth,
+          lte: previousMonthEnd,
+        },
+        status: 'DONE',
+      },
+    });
+
+    const previousTeacherSalaries = calculateTotalTeacherSalaries(
+      previousWorkedHours.map((wh) => ({
+        duration: wh.duration,
+        priceSnapshot: wh.priceSnapshot,
+        newEnrollmentsCount: wh.newEnrollmentsCount as number,
+      })),
+      commissionPerEnrollment,
+    );
+
+    const previousTeacherCosts = previousTeacherSalaries.total;
+
+    const previousExpenses = await this.prisma.expense.findMany({
+      where: {
+        createdAt: {
+          gte: previousMonth,
+          lte: previousMonthEnd,
+        },
+      },
+    });
+
+    const previousExpensesCosts = previousExpenses.reduce(
+      (sum, expense) => sum + expense.amount,
+      0,
+    );
+
+    const previousTotalCosts = previousTeacherCosts + previousExpensesCosts;
+    const previousProfit = previousMonthRevenue - previousTotalCosts;
 
     // Matrículas e turmas do mês anterior
     const previousActiveEnrollments = await this.prisma.enrollment.count({
@@ -360,6 +534,7 @@ export class PaymentService {
       totalToReceive,
       previousTotalToReceive,
     );
+    const profitTrend = calcTrend(profit, previousProfit);
 
     // Média de alunos por turma
     const currentAvg =
@@ -420,13 +595,26 @@ export class PaymentService {
       cards: {
         totalRevenue: {
           value: currentMonthRevenue,
+          fromEnrollments: totalReceived,
+          fromTrialClasses: revenueFromTrialClasses,
           trend: {
             value: totalRevenueTrend.value,
             isPositive: totalRevenueTrend.isPositive,
           },
         },
+        profit: {
+          value: profit,
+          teacherCosts: teacherCosts,
+          expensesCosts: expensesCosts,
+          trend: {
+            value: profitTrend.value,
+            isPositive: profitTrend.isPositive,
+          },
+        },
         totalToReceive: {
           value: totalToReceive,
+          fromEnrollments: pendingPayments,
+          fromTrialClasses: expectedFromTrialClasses,
           trend: {
             value: totalToReceiveTrend.value,
             isPositive: totalToReceiveTrend.isPositive,
@@ -443,6 +631,8 @@ export class PaymentService {
         },
         trialClasses: {
           value: trialClasses,
+          scheduled: trialClassesScheduled,
+          completed: trialClassesCompleted,
           trend: {
             value: trialClassesTrend.value,
             isPositive: trialClassesTrend.isPositive,

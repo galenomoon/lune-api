@@ -23,6 +23,9 @@ import { AddressesModule } from './addresses/addresses.module';
 import { TrialStudentsModule } from './trial-students/trial-students.module';
 import { WorkedHoursModule } from './worked-hours/worked-hours.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ExpensesModule } from './expenses/expenses.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -64,6 +67,9 @@ import { ScheduleModule } from '@nestjs/schedule';
     AddressesModule,
     TrialStudentsModule,
     WorkedHoursModule,
+    ExpensesModule,
+    NotificationsModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

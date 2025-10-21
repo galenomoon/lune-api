@@ -324,3 +324,33 @@ enum TrialStudentStatus {
   RESCHEDULED
   CANCELLED
 }
+
+model Expense {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  amount      Float
+  dueDay      Int           // Dia do mês que a despesa vence (1-31)
+  status      ExpenseStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("expenses")
+}
+
+model Settings {
+  id                                String   @id @default(cuid())
+  trialClassPrice                   Float    @default(40)
+  teacherCommissionPerEnrollment    Float    @default(20)
+  teacherCommissionPerTrialClass    Float    @default(0)
+  createdAt                         DateTime @default(now())
+  updatedAt                         DateTime @updatedAt
+
+  @@map("settings")
+}
+
+enum ExpenseStatus {
+  PENDING
+  PAID
+  OVERDUE
+}

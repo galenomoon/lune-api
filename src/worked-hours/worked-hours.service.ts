@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../config/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WorkedHourStatus } from '@prisma/client';
 import { CreateWorkedHourDto } from './dto/create-worked-hour.dto';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { calculateTotalTeacherSalaries } from '../utils/calculateTeacherSalary';
 
 @Injectable()
 export class WorkedHoursService {
@@ -219,6 +222,12 @@ export class WorkedHoursService {
     const startDate = startOfMonth(date);
     const endDate = endOfMonth(date);
 
+    // Buscar configurações para obter a comissão por matrícula
+    const settings = await this.prismaService.settings.findFirst();
+    const commissionPerEnrollment = settings
+      ? Number(settings.teacherCommissionPerEnrollment)
+      : 0;
+
     // Buscar mês anterior para comparação
     const previousDate = subMonths(date, 1);
     const previousStartDate = startOfMonth(previousDate);
@@ -274,16 +283,29 @@ export class WorkedHoursService {
       (wh) => wh.status === WorkedHourStatus.DONE,
     );
 
-    const totalToPay = doneWorkedHours.reduce((sum, wh) => {
-      const hours = wh.duration / 60;
-      return sum + hours * wh.priceSnapshot;
-    }, 0);
+    // Calcular salários usando a fórmula padrão do sistema
+    const salaryBreakdown = calculateTotalTeacherSalaries(
+      doneWorkedHours.map((wh) => ({
+        duration: wh.duration,
+        priceSnapshot: wh.priceSnapshot,
+        newEnrollmentsCount: wh.newEnrollmentsCount as number,
+      })),
+      commissionPerEnrollment,
+    );
 
-    // Calcular total do mês anterior (apenas DONE)
-    const previousTotalToPay = previousWorkedHours.reduce((sum, wh) => {
-      const hours = wh.duration / 60;
-      return sum + hours * wh.priceSnapshot;
-    }, 0);
+    const totalToPay = salaryBreakdown.total;
+
+    // Calcular total do mês anterior (apenas DONE) usando a fórmula padrão
+    const previousSalaries = calculateTotalTeacherSalaries(
+      previousWorkedHours.map((wh) => ({
+        duration: wh.duration,
+        priceSnapshot: wh.priceSnapshot,
+        newEnrollmentsCount: wh.newEnrollmentsCount as number,
+      })),
+      commissionPerEnrollment,
+    );
+
+    const previousTotalToPay = previousSalaries.total;
 
     // Calcular variação percentual (invertida: menor é melhor = positivo)
     const paymentChange =
@@ -312,36 +334,80 @@ export class WorkedHoursService {
           : 0;
 
     // Calcular métricas por professor (apenas DONE)
-    const teacherStats = doneWorkedHours.reduce(
-      (acc, wh) => {
-        const teacherId = wh.teacherId;
-        if (!acc[teacherId]) {
-          acc[teacherId] = {
-            teacherName: wh.teacherNameSnapshot as string,
-            totalCost: 0,
-            totalClasses: 0,
-            totalStudents: 0,
-            newEnrollments: 0,
-          };
-        }
-        const hours = wh.duration / 60;
-        acc[teacherId].totalCost += hours * wh.priceSnapshot;
-        acc[teacherId].totalClasses += 1;
-        acc[teacherId].totalStudents += wh.totalStudentsCount;
-        acc[teacherId].newEnrollments += wh.newEnrollmentsCount as number;
-        return acc;
-      },
-      {} as Record<
-        string,
-        {
-          teacherName: string;
-          totalCost: number;
-          totalClasses: number;
-          totalStudents: number;
-          newEnrollments: number;
-        }
-      >,
-    );
+    const teacherStatsMap = new Map<
+      string,
+      {
+        teacherName: string;
+        totalCost: number;
+        totalClasses: number;
+        uniqueEnrolledStudents: Set<string>;
+        totalTrialStudents: number;
+        newEnrollments: number;
+      }
+    >();
+
+    doneWorkedHours.forEach((wh) => {
+      const teacherId = wh.teacherId;
+      if (!teacherStatsMap.has(teacherId)) {
+        teacherStatsMap.set(teacherId, {
+          teacherName: wh.teacherNameSnapshot as string,
+          totalCost: 0,
+          totalClasses: 0,
+          uniqueEnrolledStudents: new Set<string>(),
+          totalTrialStudents: 0,
+          newEnrollments: 0,
+        });
+      }
+
+      const stats = teacherStatsMap.get(teacherId)!;
+
+      // Usar a fórmula padrão do sistema para calcular salário
+      const { total: salaryTotal } = calculateTotalTeacherSalaries(
+        [
+          {
+            duration: wh.duration,
+            priceSnapshot: wh.priceSnapshot,
+            newEnrollmentsCount: wh.newEnrollmentsCount as number,
+          },
+        ],
+        commissionPerEnrollment,
+      );
+
+      stats.totalCost += salaryTotal;
+      stats.totalClasses += 1;
+      stats.totalTrialStudents += wh.trialStudentsCount as number;
+      stats.newEnrollments += wh.newEnrollmentsCount as number;
+
+      // Adicionar alunos matriculados únicos
+      if (wh.class?.enrollments) {
+        wh.class.enrollments.forEach((enrollment) => {
+          stats.uniqueEnrolledStudents.add(enrollment.student.id);
+        });
+      }
+    });
+
+    // Converter para formato final
+    const teacherStats: Record<
+      string,
+      {
+        teacherName: string;
+        totalCost: number;
+        totalClasses: number;
+        totalStudents: number;
+        newEnrollments: number;
+      }
+    > = {};
+
+    teacherStatsMap.forEach((stats, teacherId) => {
+      teacherStats[teacherId] = {
+        teacherName: stats.teacherName,
+        totalCost: stats.totalCost,
+        totalClasses: stats.totalClasses,
+        totalStudents:
+          stats.uniqueEnrolledStudents.size + stats.totalTrialStudents,
+        newEnrollments: stats.newEnrollments,
+      };
+    });
 
     // Encontrar professor com menor custo e maior quantidade de aulas/alunos
     const bestTeacher = Object.entries(teacherStats).reduce(
@@ -368,6 +434,8 @@ export class WorkedHoursService {
       cards: {
         totalToPay: {
           value: totalToPay,
+          fromHours: salaryBreakdown.fromHours,
+          fromEnrollments: salaryBreakdown.fromCommissions,
           trend: {
             value: Math.abs(paymentChange),
             isPositive: paymentChange >= 0, // Invertido: custo menor é positivo
@@ -678,6 +746,12 @@ export class WorkedHoursService {
     const startDate = startOfMonth(date);
     const endDate = endOfMonth(date);
 
+    // Buscar configurações para obter a comissão por matrícula
+    const settings = await this.prismaService.settings.findFirst();
+    const commissionPerEnrollment = settings
+      ? Number(settings.teacherCommissionPerEnrollment)
+      : 0;
+
     // Buscar todas as worked hours do mês com status DONE
     const workedHours = await this.prismaService.workedHour.findMany({
       where: {
@@ -703,6 +777,7 @@ export class WorkedHoursService {
         teacherId: string;
         teacherName: string;
         totalClasses: number;
+        totalHours: number;
         newEnrollments: number;
         priceHour: number;
         totalToPay: number;
@@ -719,6 +794,7 @@ export class WorkedHoursService {
           teacherId,
           teacherName: wh.teacherNameSnapshot,
           totalClasses: 0,
+          totalHours: 0,
           newEnrollments: 0,
           priceHour: wh.priceSnapshot,
           totalToPay: 0,
@@ -729,9 +805,23 @@ export class WorkedHoursService {
 
       const teacher = teacherMap.get(teacherId)!;
       const hours = wh.duration / 60;
+
+      // Usar a fórmula padrão do sistema para calcular salário
+      const { total: salaryTotal } = calculateTotalTeacherSalaries(
+        [
+          {
+            duration: wh.duration,
+            priceSnapshot: wh.priceSnapshot,
+            newEnrollmentsCount: wh.newEnrollmentsCount,
+          },
+        ],
+        commissionPerEnrollment,
+      );
+
       teacher.totalClasses += 1;
+      teacher.totalHours += hours;
       teacher.newEnrollments += wh.newEnrollmentsCount;
-      teacher.totalToPay += hours * wh.priceSnapshot;
+      teacher.totalToPay += salaryTotal;
       teacher.modalities.add(wh.modalityNameSnapshot);
     });
 
@@ -740,6 +830,7 @@ export class WorkedHoursService {
       teacherId: teacher.teacherId,
       teacherName: teacher.teacherName,
       totalClasses: teacher.totalClasses,
+      totalHours: teacher.totalHours,
       newEnrollments: teacher.newEnrollments,
       priceHour: teacher.priceHour,
       totalToPay: teacher.totalToPay,
