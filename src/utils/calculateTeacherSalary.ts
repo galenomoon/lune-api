@@ -65,3 +65,4 @@ export function calculateTotalTeacherSalaries(
     { total: 0, fromHours: 0, fromCommissions: 0 },
   );
 }
+
