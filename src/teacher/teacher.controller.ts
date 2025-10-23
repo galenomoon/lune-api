@@ -42,15 +42,6 @@ export class TeacherController {
   }
 
   @UseGuards(AuthTeacherGuard)
-  @Get('schedule')
-  async getTeacherSchedule(
-    @Req() req: Request,
-    @Query('targetDate') targetDate?: string,
-  ) {
-    return await this.teacherService.getTeacherSchedule(req.user.id, targetDate);
-  }
-
-  @UseGuards(AuthTeacherGuard)
   @Get('schedule/week')
   async getTeacherScheduleByWeek(
     @Req() req: Request,
@@ -59,6 +50,18 @@ export class TeacherController {
     const weekDate = week ? new Date(week) : new Date();
 
     return await this.teacherService.getWeeklySchedule(req.user.id, weekDate);
+  }
+
+  @UseGuards(AuthTeacherGuard)
+  @Get('me/salary-summary')
+  async getTeacherSalarySummary(@Req() req: Request) {
+    return await this.teacherService.getTeacherSalarySummary(req.user.id);
+  }
+
+  @UseGuards(AuthTeacherGuard)
+  @Get('me/schedule')
+  async getNearestClasses(@Req() req: Request) {
+    return await this.teacherService.getNearestClasses(req.user.id);
   }
 
   @UseGuards(AuthGuard)
