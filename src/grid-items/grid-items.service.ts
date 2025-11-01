@@ -112,6 +112,29 @@ export class GridItemsService {
     modalityId: string;
     classLevelId: string;
   }) {
+    // Obter data atual no timezone de São Paulo
+    const dateAmericaSP = new Date(
+      new Date().toLocaleString('en-US', {
+        timeZone: 'America/Sao_Paulo',
+      }),
+    );
+
+    // Calcular início e fim do mês atual
+    const startOfMonth = new Date(
+      dateAmericaSP.getFullYear(),
+      dateAmericaSP.getMonth(),
+      1,
+    );
+    const endOfMonth = new Date(
+      dateAmericaSP.getFullYear(),
+      dateAmericaSP.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
+
     const gridItems = await this.prisma.gridItem.findMany({
       orderBy: { startTime: 'asc' },
       where: {
@@ -127,6 +150,13 @@ export class GridItemsService {
       },
       include: {
         trialStudents: {
+          where: {
+            status: 'SCHEDULED',
+            date: {
+              gte: startOfMonth,
+              lte: endOfMonth,
+            },
+          },
           include: {
             lead: true,
           },
