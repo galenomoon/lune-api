@@ -54,8 +54,18 @@ export class TeacherController {
 
   @UseGuards(AuthTeacherGuard)
   @Get('me/salary-summary')
-  async getTeacherSalarySummary(@Req() req: Request) {
-    return await this.teacherService.getTeacherSalarySummary(req.user.id);
+  async getTeacherSalarySummary(
+    @Req() req: Request,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+  ) {
+    const monthNumber = month ? parseInt(month) : undefined;
+    const yearNumber = year ? parseInt(year) : undefined;
+    return await this.teacherService.getTeacherSalarySummary(
+      req.user.id,
+      monthNumber,
+      yearNumber,
+    );
   }
 
   @UseGuards(AuthTeacherGuard)

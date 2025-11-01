@@ -5,6 +5,7 @@ import { PrismaService } from 'src/config/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { getIsOverdue } from 'src/utils/getIsOverdue';
 import { calculateTotalTeacherSalaries } from 'src/utils/calculateTeacherSalary';
+import { newBrazilianDate } from 'src/utils/newBrazilianDate';
 
 @Injectable()
 export class PaymentService {
@@ -158,12 +159,14 @@ export class PaymentService {
     month?: number;
     year?: number;
   }) {
-    const now = new Date();
+    // Considera o timezone de São Paulo (America/Sao_Paulo)
+    const now = newBrazilianDate();
     const targetMonth = month ?? now.getMonth() + 1;
     const targetYear = year ?? now.getFullYear();
-
-    const start = new Date(targetYear, targetMonth - 1, 1);
-    const end = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
+    const start = new Date(
+      Date.UTC(targetYear, targetMonth - 1, 1, 0, 0, 0, 0),
+    );
+    const end = new Date(Date.UTC(targetYear, targetMonth, 0, 23, 59, 59, 999));
 
     // Pagamentos do mês atual (inclui OVERDUE, PENDING e PAID, exceto CANCELED)
     const paymentsThisMonth = await this.prisma.payment.findMany({

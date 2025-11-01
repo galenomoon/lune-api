@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+
 import { Injectable } from '@nestjs/common';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
@@ -152,19 +155,20 @@ export class TeacherService {
       },
     });
 
-    const filteredGridItems = gridItems.filter(
-      (item) => {
-        const hasSomeEnrollment = (item?.class && item.class.enrollments.length > 0)
-        const hasSomeTrialClass = item?.trialStudents?.length > 0
-        const hasSomeActiveEnrollment = item?.class && item?.class?.enrollments?.some(e => e.status === 'active')
+    const filteredGridItems = gridItems.filter((item) => {
+      const hasSomeEnrollment =
+        item?.class && item.class.enrollments.length > 0;
+      const hasSomeTrialClass = item?.trialStudents?.length > 0;
+      const hasSomeActiveEnrollment =
+        item?.class &&
+        item?.class?.enrollments?.some((e) => e.status === 'active');
 
-        if (hasSomeTrialClass) return true
+      if (hasSomeTrialClass) return true;
 
-        if (hasSomeEnrollment && hasSomeActiveEnrollment) return true
+      if (hasSomeEnrollment && hasSomeActiveEnrollment) return true;
 
-        return false
-      }
-    );
+      return false;
+    });
 
     const weeklyGrouped: Record<
       string,
@@ -245,11 +249,18 @@ export class TeacherService {
     return await this.prisma.teacher.delete({ where: { id } });
   }
 
-  async getTeacherSalarySummary(teacherId: string) {
-    // Data atual para o mês
-    const currentDate = new Date();
-    const startDate = startOfMonth(currentDate);
-    const endDate = endOfMonth(currentDate);
+  async getTeacherSalarySummary(
+    teacherId: string,
+    month?: number,
+    year?: number,
+  ) {
+    // Usar mês/ano fornecidos ou data atual como padrão
+    const targetDate = new Date();
+    if (year) targetDate.setFullYear(year);
+    if (month) targetDate.setMonth(month - 1); // mês é 0-indexed no Date
+
+    const startDate = startOfMonth(targetDate);
+    const endDate = endOfMonth(targetDate);
 
     // Buscar configurações para obter a comissão por matrícula
     const settings = await this.prisma.settings.findFirst();
@@ -304,10 +315,8 @@ export class TeacherService {
     );
 
     // Calcular total de horas
-    const totalHours = workedHours.reduce(
-      (sum, wh) => sum + wh.duration,
-      0,
-    ) / 60;
+    const totalHours =
+      workedHours.reduce((sum, wh) => sum + wh.duration, 0) / 60;
 
     // Calcular total de novas matrículas
     const newEnrollments = workedHours.reduce(
@@ -316,8 +325,9 @@ export class TeacherService {
     );
 
     // Nome do mês em português
-    const monthName = format(currentDate, 'MMMM', { locale: ptBR });
-    const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+    const monthName = format(targetDate, 'MMMM', { locale: ptBR });
+    const capitalizedMonth =
+      monthName.charAt(0).toUpperCase() + monthName.slice(1);
 
     return {
       month: capitalizedMonth,
@@ -341,32 +351,37 @@ export class TeacherService {
         newEnrollmentsCount: wh.newEnrollmentsCount as number,
         priceSnapshot: wh.priceSnapshot,
         status: wh.status,
-        students: wh.class?.enrollments?.map((e) => ({
-          id: e.student.id,
-          firstName: e.student.firstName,
-          lastName: e.student.lastName,
-          type: 'enrolled' as const,
-        })) || [],
+        students:
+          wh.class?.enrollments?.map((e) => ({
+            id: e.student.id,
+            firstName: e.student.firstName,
+            lastName: e.student.lastName,
+            type: 'enrolled' as const,
+          })) || [],
       })),
     };
   }
 
   async getNearestClasses(teacherId: string) {
     const today = newBrazilianDate();
-    
+
     // Primeiro, tentar buscar aulas de hoje
     const todaySchedule = await this.getScheduleForDate(teacherId, today, true);
-    
+
     // Se encontrou aulas hoje, retornar
     if (todaySchedule.schedule.length > 0) {
       return todaySchedule;
     }
-    
+
     // Se não há aulas hoje, buscar a próxima data com aulas
     return this.getNextAvailableSchedule(teacherId);
   }
 
-  private async getScheduleForDate(teacherId: string, targetDate: Date, isToday: boolean = false) {
+  private async getScheduleForDate(
+    teacherId: string,
+    targetDate: Date,
+    isToday: boolean = false,
+  ) {
     const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(targetDate);
@@ -438,12 +453,15 @@ export class TeacherService {
       classDescription: gridItem.class?.description || null,
       enrolledStudentsCount: gridItem.class?.enrollments?.length || 0,
       trialStudentsCount: gridItem.trialStudents.length,
-      totalStudentsCount: (gridItem.class?.enrollments?.length || 0) + gridItem.trialStudents.length,
-      enrolledStudents: gridItem.class?.enrollments?.map((e) => ({
-        id: e.student.id,
-        firstName: e.student.firstName,
-        lastName: e.student.lastName,
-      })) || [],
+      totalStudentsCount:
+        (gridItem.class?.enrollments?.length || 0) +
+        gridItem.trialStudents.length,
+      enrolledStudents:
+        gridItem.class?.enrollments?.map((e) => ({
+          id: e.student.id,
+          firstName: e.student.firstName,
+          lastName: e.student.lastName,
+        })) || [],
       trialStudents: gridItem.trialStudents.map((ts) => ({
         id: ts.id,
         lead: ts.lead,
@@ -451,11 +469,11 @@ export class TeacherService {
       })),
     }));
 
-    const dayLabel = isToday 
-      ? 'Hoje' 
-      : isTomorrow(targetDate) 
-        ? 'Amanhã' 
-        : format(targetDate, "EEEE", { locale: ptBR });
+    const dayLabel = isToday
+      ? 'Hoje'
+      : isTomorrow(targetDate)
+        ? 'Amanhã'
+        : format(targetDate, 'EEEE', { locale: ptBR });
 
     return {
       date: targetDate,
@@ -467,12 +485,16 @@ export class TeacherService {
 
   private async getNextAvailableSchedule(teacherId: string) {
     const today = newBrazilianDate();
-    
+
     // Buscar próximos 7 dias
     for (let i = 1; i <= 7; i++) {
       const checkDate = addDays(today, i);
-      const schedule = await this.getScheduleForDate(teacherId, checkDate, false);
-      
+      const schedule = await this.getScheduleForDate(
+        teacherId,
+        checkDate,
+        false,
+      );
+
       if (schedule.schedule.length > 0) {
         return schedule;
       }

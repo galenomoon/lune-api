@@ -7,6 +7,7 @@ import { WorkedHourStatus } from '@prisma/client';
 import { CreateWorkedHourDto } from './dto/create-worked-hour.dto';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { calculateTotalTeacherSalaries } from '../utils/calculateTeacherSalary';
+import { newBrazilianDate } from '../utils/newBrazilianDate';
 
 @Injectable()
 export class WorkedHoursService {
@@ -16,18 +17,19 @@ export class WorkedHoursService {
     timeZone: 'America/Sao_Paulo',
   })
   async createBatch() {
-    const dateAmericaSP = new Date(
-      new Date().toLocaleString('en-US', {
-        timeZone: 'America/Sao_Paulo',
-      }),
-    );
-    const weekday = dateAmericaSP.getDay();
+    const dateBrazilian = newBrazilianDate();
+    const weekday = dateBrazilian.getDay();
+
+    const startOfDayBrazilian = new Date(dateBrazilian);
+    startOfDayBrazilian.setHours(0, 0, 0, 0);
+    const endOfDayBrazilian = new Date(dateBrazilian);
+    endOfDayBrazilian.setHours(23, 59, 59, 999);
 
     const workedHoursToday = await this.prismaService.workedHour.findMany({
       where: {
         workedAt: {
-          gte: new Date(dateAmericaSP.setHours(0, 0, 0, 0)),
-          lte: new Date(dateAmericaSP.setHours(23, 59, 59, 999)),
+          gte: startOfDayBrazilian,
+          lte: endOfDayBrazilian,
         },
       },
     });
@@ -72,8 +74,8 @@ export class WorkedHoursService {
         trialStudents: {
           where: {
             date: {
-              gte: new Date(dateAmericaSP.setHours(0, 0, 0, 0)),
-              lte: new Date(dateAmericaSP.setHours(23, 59, 59, 999)),
+              gte: startOfDayBrazilian,
+              lte: endOfDayBrazilian,
             },
           },
         },
@@ -82,13 +84,25 @@ export class WorkedHoursService {
 
     const workedHours = gridItems
       .map((gridItem) => {
-        const start = this.convertStringTimeToDate(
-          gridItem.startTime,
-          new Date(),
-        );
-        const end = this.convertStringTimeToDate(gridItem.endTime, new Date());
+        // Criar data base no timezone brasileiro para o dia correto
+        const workedAtDateBrazilian = new Date(startOfDayBrazilian);
 
-        const duration = ((start.getTime() - end.getTime()) / 1000 / 60) * -1;
+        // Usar o método existente para converter horários string para Date
+        const startedAt = this.convertStringTimeToDate(
+          gridItem.startTime,
+          workedAtDateBrazilian,
+        );
+        const endedAt = this.convertStringTimeToDate(
+          gridItem.endTime,
+          workedAtDateBrazilian,
+        );
+
+        // Se o horário de término for menor que o de início, significa que termina no dia seguinte
+        if (endedAt.getTime() <= startedAt.getTime()) {
+          endedAt.setDate(endedAt.getDate() + 1);
+        }
+
+        const duration = (endedAt.getTime() - startedAt.getTime()) / 1000 / 60;
 
         const enrolledStudentsCount = gridItem.class?.enrollments?.length || 0;
         const trialStudentsCount = gridItem.trialStudents?.length || 0;
@@ -96,15 +110,9 @@ export class WorkedHoursService {
         return {
           teacherId: gridItem.class?.teacherId || '',
           classId: gridItem.classId || '',
-          workedAt: dateAmericaSP,
-          startedAt: this.convertStringTimeToDate(
-            gridItem.startTime,
-            dateAmericaSP,
-          ),
-          endedAt: this.convertStringTimeToDate(
-            gridItem.endTime,
-            dateAmericaSP,
-          ),
+          workedAt: workedAtDateBrazilian,
+          startedAt,
+          endedAt,
           priceSnapshot: gridItem.class?.teacher?.priceHour || 0,
           status: WorkedHourStatus.PENDING,
           duration,
