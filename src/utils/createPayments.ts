@@ -30,7 +30,7 @@ export const createPayments = ({
     firstPaymentDate < startDate ||
     firstPaymentDate.getMonth() === today.getMonth()
   ) {
-    firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
+    firstPaymentDate.setMonth(firstPaymentDate.getMonth());
   }
 
   const monthsQuantity =
