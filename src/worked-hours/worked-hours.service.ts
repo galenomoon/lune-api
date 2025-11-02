@@ -7,7 +7,6 @@ import { WorkedHourStatus } from '@prisma/client';
 import { CreateWorkedHourDto } from './dto/create-worked-hour.dto';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { calculateTotalTeacherSalaries } from '../utils/calculateTeacherSalary';
-import { newBrazilianDate } from '../utils/newBrazilianDate';
 
 @Injectable()
 export class WorkedHoursService {
@@ -17,13 +16,24 @@ export class WorkedHoursService {
     timeZone: 'America/Sao_Paulo',
   })
   async createBatch() {
-    const dateBrazilian = newBrazilianDate();
-    const weekday = dateBrazilian.getDay();
+    // Obter data atual no fuso horário brasileiro
+    const now = new Date();
+    const brazilianDate = new Date(
+      now.toLocaleString('en-US', {
+        timeZone: 'America/Sao_Paulo',
+      }),
+    );
 
-    const startOfDayBrazilian = new Date(dateBrazilian);
-    startOfDayBrazilian.setHours(0, 0, 0, 0);
-    const endOfDayBrazilian = new Date(dateBrazilian);
-    endOfDayBrazilian.setHours(23, 59, 59, 999);
+    // Extrair componentes da data brasileira
+    const year = brazilianDate.getFullYear();
+    const month = brazilianDate.getMonth();
+    const day = brazilianDate.getDate();
+
+    // Criar data correta no timezone brasileiro (meia-noite)
+    const startOfDayBrazilian = new Date(year, month, day, 0, 0, 0, 0);
+    const endOfDayBrazilian = new Date(year, month, day, 23, 59, 59, 999);
+
+    const weekday = brazilianDate.getDay();
 
     const workedHoursToday = await this.prismaService.workedHour.findMany({
       where: {
@@ -759,6 +769,7 @@ export class WorkedHoursService {
     const commissionPerEnrollment = settings
       ? Number(settings.teacherCommissionPerEnrollment)
       : 0;
+    const trialClassPrice = settings ? Number(settings.trialClassPrice) : 0;
 
     // Buscar todas as worked hours do mês com status DONE
     const workedHours = await this.prismaService.workedHour.findMany({
@@ -778,6 +789,68 @@ export class WorkedHoursService {
       },
     });
 
+    // Buscar todos os professores que tiveram aulas no mês
+    const teacherIds = [...new Set(workedHours.map((wh) => wh.teacherId))];
+
+    // Buscar matrículas ativas no mês para cada professor
+    const enrollments = await this.prismaService.enrollment.findMany({
+      where: {
+        class: {
+          teacherId: {
+            in: teacherIds,
+          },
+        },
+        status: 'active',
+        AND: [
+          {
+            startDate: {
+              lte: endDate,
+            },
+          },
+          {
+            endDate: {
+              gte: startDate,
+            },
+          },
+        ],
+      },
+      include: {
+        plan: true,
+        class: true,
+      },
+    });
+
+    // Buscar aulas avulsas (trial students) realizadas no mês para cada professor
+    const trialStudents = await this.prismaService.trialStudent.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+        status: {
+          notIn: ['CANCELLED', 'SCHEDULED'],
+        },
+        gridItem: {
+          class: {
+            teacherId: {
+              in: teacherIds,
+            },
+          },
+        },
+      },
+      include: {
+        gridItem: {
+          include: {
+            class: {
+              select: {
+                teacherId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
     // Agrupar por professor
     const teacherMap = new Map<
       string,
@@ -789,6 +862,9 @@ export class WorkedHoursService {
         newEnrollments: number;
         priceHour: number;
         totalToPay: number;
+        totalRevenue: number;
+        revenueFromEnrollments: number;
+        revenueFromTrialClasses: number;
         modalities: Set<string>;
         pixKey: string | null;
       }
@@ -806,6 +882,9 @@ export class WorkedHoursService {
           newEnrollments: 0,
           priceHour: wh.priceSnapshot,
           totalToPay: 0,
+          totalRevenue: 0,
+          revenueFromEnrollments: 0,
+          revenueFromTrialClasses: 0,
           modalities: new Set<string>(),
           pixKey: wh.teacher?.pixKey || null,
         });
@@ -826,11 +905,29 @@ export class WorkedHoursService {
         commissionPerEnrollment,
       );
 
-      teacher.totalClasses += 1;
       teacher.totalHours += hours;
       teacher.newEnrollments += wh.newEnrollmentsCount;
       teacher.totalToPay += salaryTotal;
       teacher.modalities.add(wh.modalityNameSnapshot);
+    });
+
+    // Calcular receita total por professor
+    teacherMap.forEach((teacher, teacherId) => {
+      // Soma dos preços dos planos de todas as matrículas ativas
+      const enrollmentsRevenue = enrollments
+        .filter((enrollment) => enrollment.class?.teacherId === teacherId)
+        .reduce((sum, enrollment) => sum + Number(enrollment.plan.price), 0);
+
+      // Contar e calcular receita das aulas avulsas realizadas
+      const trialStudentsCount = trialStudents.filter(
+        (trial) => trial.gridItem?.class?.teacherId === teacherId,
+      ).length;
+      const trialStudentsRevenue = trialStudentsCount * trialClassPrice;
+
+      teacher.totalClasses = trialStudentsCount; // Quantidade de aulas avulsas realizadas
+      teacher.totalRevenue = enrollmentsRevenue + trialStudentsRevenue;
+      teacher.revenueFromEnrollments = enrollmentsRevenue;
+      teacher.revenueFromTrialClasses = trialStudentsRevenue;
     });
 
     // Converter para array e transformar Set em array
@@ -842,6 +939,9 @@ export class WorkedHoursService {
       newEnrollments: teacher.newEnrollments,
       priceHour: teacher.priceHour,
       totalToPay: teacher.totalToPay,
+      totalRevenue: teacher.totalRevenue,
+      revenueFromEnrollments: teacher.revenueFromEnrollments,
+      revenueFromTrialClasses: teacher.revenueFromTrialClasses,
       modalities: Array.from(teacher.modalities),
       pixKey: teacher.pixKey,
     }));
