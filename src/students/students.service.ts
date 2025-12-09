@@ -10,7 +10,13 @@ import { formatListStudentsResponse } from 'src/students/utils/format-list-stude
 export class StudentsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll() {
+  async findAll(filters?: {
+    search?: string;
+    planId?: string;
+    modalityId?: string;
+  }) {
+    const { search, planId, modalityId } = filters || {};
+
     const students = await this.prisma.student.findMany({
       include: {
         enrollments: {
@@ -28,6 +34,14 @@ export class StudentsService {
             status: {
               notIn: ['archived', 'canceled'],
             },
+            ...(planId && {
+              planId,
+            }),
+            ...(modalityId && {
+              class: {
+                modalityId,
+              },
+            }),
           },
         },
       },
@@ -35,11 +49,25 @@ export class StudentsService {
         firstName: 'asc',
       },
       where: {
+        ...(search && {
+          OR: [
+            { firstName: { contains: search, mode: 'insensitive' } },
+            { lastName: { contains: search, mode: 'insensitive' } },
+          ],
+        }),
         enrollments: {
           some: {
             status: {
               notIn: ['archived', 'canceled'],
             },
+            ...(planId && {
+              planId,
+            }),
+            ...(modalityId && {
+              class: {
+                modalityId,
+              },
+            }),
           },
         },
       },

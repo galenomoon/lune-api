@@ -20,8 +20,16 @@ export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
   @Get()
-  async findAll() {
-    return await this.studentsService.findAll();
+  async findAll(
+    @Query('search') search?: string,
+    @Query('planId') planId?: string,
+    @Query('modalityId') modalityId?: string,
+  ) {
+    return await this.studentsService.findAll({
+      search,
+      planId,
+      modalityId,
+    });
   }
 
   @Version('2')
