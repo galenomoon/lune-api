@@ -233,7 +233,7 @@ export class WorkedHoursService {
     });
   }
 
-  async findAll(month: string, year: string) {
+  async findAll(month: string, year: string, teacherId?: string) {
     // Criar data corretamente para evitar problemas de timezone
     // Date constructor usa mês base 0 (0 = janeiro, 11 = dezembro)
     const date = new Date(parseInt(year), parseInt(month) - 1, 1);
@@ -258,6 +258,7 @@ export class WorkedHoursService {
           gte: startDate,
           lte: endDate,
         },
+        ...(teacherId && { teacherId }),
       },
       include: {
         class: {
@@ -293,6 +294,7 @@ export class WorkedHoursService {
           lte: previousEndDate,
         },
         status: WorkedHourStatus.DONE,
+        ...(teacherId && { teacherId }),
       },
     });
 

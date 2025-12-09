@@ -32,8 +32,12 @@ export class WorkedHoursController {
 
   @UseGuards(AuthGuard)
   @Get()
-  async findAll(@Query('month') month: string, @Query('year') year: string) {
-    return await this.workedHoursService.findAll(month, year);
+  async findAll(
+    @Query('month') month: string,
+    @Query('year') year: string,
+    @Query('teacherId') teacherId?: string,
+  ) {
+    return await this.workedHoursService.findAll(month, year, teacherId);
   }
 
   @UseGuards(AuthGuard)
