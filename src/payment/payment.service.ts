@@ -213,12 +213,19 @@ export class PaymentService {
       : 0;
     const trialClassPrice = settings?.trialClassPrice || 0;
 
-    // Buscar worked hours DONE do mês para calcular custos com professores
-    const workedHoursThisMonth = await this.prisma.workedHour.findMany({
+    // Buscar worked hours DONE do mês passado para calcular custos com professores
+    const prevMonth = targetMonth === 1 ? 12 : targetMonth - 1;
+    const prevYear = targetMonth === 1 ? targetYear - 1 : targetYear;
+    const prevStart = new Date(
+      Date.UTC(prevYear, prevMonth - 1, 1, 0, 0, 0, 0),
+    );
+    const prevEnd = new Date(Date.UTC(prevYear, prevMonth, 0, 23, 59, 59, 999));
+
+    const workedHoursLastMonth = await this.prisma.workedHour.findMany({
       where: {
         workedAt: {
-          gte: start,
-          lte: end,
+          gte: prevStart,
+          lte: prevEnd,
         },
         status: 'DONE',
       },
@@ -326,7 +333,7 @@ export class PaymentService {
 
     // Calcular custos do mês usando a fórmula padrão do sistema
     const teacherSalaries = calculateTotalTeacherSalaries(
-      workedHoursThisMonth.map((wh) => ({
+      workedHoursLastMonth.map((wh) => ({
         duration: wh.duration,
         priceSnapshot: wh.priceSnapshot,
         newEnrollmentsCount: wh.newEnrollmentsCount as number,
